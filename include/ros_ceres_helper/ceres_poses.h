@@ -69,6 +69,10 @@ namespace cerise{
             return out;
         }
 
+        void apply(const DT* const Pin, DT* Pout) const {
+            applyTransform(Q,T,Pin,Pout);
+        }
+
         template <typename DTout>
             TPose<DTout> cast() const {
                 TPose<DTout> out;
