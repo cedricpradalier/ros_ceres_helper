@@ -3,6 +3,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <memory>
 #include "ceres/ceres.h"
 #include "gflags/gflags.h"
 #include "glog/logging.h"
@@ -18,13 +19,15 @@ namespace cerise{
     class BasicOptimisationProblem {
         protected:
 
-            ceres::Problem problem;
+            std::shared_ptr<ceres::Problem> problem;
+
             void SetLinearSolver(ceres::Solver::Options* options) ;
 
             void SetMinimizerOptions(ceres::Solver::Options* options) ;
 
         public:
             BasicOptimisationProblem() {
+                problem.reset(new ceres::Problem);
             }
 
 

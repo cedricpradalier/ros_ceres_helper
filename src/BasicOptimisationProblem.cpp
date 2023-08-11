@@ -62,7 +62,7 @@ void BasicOptimisationProblem::optimise() {
     }
     printf("\n");
 #endif
-    Solve(options, &problem, &summary);
+    Solve(options, &(*problem), &summary);
     std::cout << summary.FullReport() << "\n";
 
 }
