@@ -68,6 +68,18 @@ namespace cerise{
                     T[2]=DT(T.T[2]);
             }
 
+
+        void setFromEuler(double roll, double pitch, double yaw,
+                double x=0, double y=0, double z=0) {
+            DT R[9];
+            DT euler[3] = {DT(roll*180/M_PI), DT(pitch*180/M_PI), DT(yaw*180./M_PI)};
+            ceres::EulerAnglesToRotationMatrix(euler,3,R);
+            ceres::RotationMatrixToQuaternion(R,Q);
+
+            T[0]=DT(x);
+            T[1]=DT(y);
+            T[2]=DT(z);
+        }
         
 
         TPose<DT> inverse() const {
