@@ -30,6 +30,9 @@ namespace cerise{
                 problem.reset(new ceres::Problem);
             }
 
+            void reset() {
+                problem.reset(new ceres::Problem);
+            }
 
             void optimise() ;
 
