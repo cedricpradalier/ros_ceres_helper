@@ -72,7 +72,7 @@ namespace cerise{
         void setFromEuler(double roll, double pitch, double yaw,
                 double x=0, double y=0, double z=0) {
             DT R[9];
-            DT euler[3] = {DT(roll*180/M_PI), DT(pitch*180/M_PI), DT(yaw*180./M_PI)};
+            DT euler[3] = {DT(pitch*180/M_PI), DT(roll*180/M_PI), DT(yaw*180./M_PI)};
             ceres::EulerAnglesToRotationMatrix(euler,3,R);
             ceres::RotationMatrixToQuaternion(R,Q);
 
