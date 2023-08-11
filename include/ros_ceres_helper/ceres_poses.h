@@ -57,6 +57,19 @@ namespace cerise{
                     T[2]=DT(t[2]);
             }
 
+        template <typename DTin>
+            TPose(const TPose<DTin> & T) {
+                    Q[0]=DT(T.Q[0]);
+                    Q[1]=DT(T.Q[1]);
+                    Q[2]=DT(T.Q[2]);
+                    Q[3]=DT(T.Q[3]);
+                    T[0]=DT(T.T[0]);
+                    T[1]=DT(T.T[1]);
+                    T[2]=DT(T.T[2]);
+            }
+
+        
+
         TPose<DT> inverse() const {
             TPose<DT> out;
             invertTransform(Q,T,out.Q,out.T);
