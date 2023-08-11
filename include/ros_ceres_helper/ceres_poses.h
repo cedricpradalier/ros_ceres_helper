@@ -72,9 +72,17 @@ namespace cerise{
         void setFromEuler(double roll, double pitch, double yaw,
                 double x=0, double y=0, double z=0) {
             DT R[9];
-            DT euler[3] = {DT(roll*180/M_PI), DT(pitch*180/M_PI), DT(yaw*180./M_PI)};
+            // DT euler[3] = {DT(roll*180/M_PI), DT(pitch*180/M_PI), DT(yaw*180./M_PI)};
+            // This is ridiculous. The order of parameter is the only one 
+            // I found that lead to the the inverse of the rotation matrix 
+            // I'm looking for. At least the one consistent with TF
+            DT euler[3] = {DT(-yaw*180/M_PI), DT(pitch*180/M_PI), DT(roll*180./M_PI)};
+            
             ceres::EulerAnglesToRotationMatrix(euler,3,R);
             ceres::RotationMatrixToQuaternion(R,Q);
+            Q[1]=-Q[1];
+            Q[2]=-Q[2];
+            Q[3]=-Q[3];
 
             T[0]=DT(x);
             T[1]=DT(y);

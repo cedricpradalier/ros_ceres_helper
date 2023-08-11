@@ -34,7 +34,7 @@ namespace cerise {
             "Changing this parameter can affect solve performance.");
     DEFINE_double(function_tolerance, 1e-6, "Default value for the function tolerance, i.e. the cost value to aim for.");
 
-    DEFINE_int32(num_threads, 1, "Number of threads.");
+    DEFINE_int32(num_threads, 4, "Number of threads.");
     DEFINE_int32(num_iterations, 5000, "Number of iterations.");
     DEFINE_double(max_solver_time, 1e32, "Maximum solve time in seconds.");
     DEFINE_bool(nonmonotonic_steps, false, "Trust region algorithm can use"
