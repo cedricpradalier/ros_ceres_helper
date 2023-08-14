@@ -69,25 +69,26 @@ namespace cerise{
             }
 
 
-        void setFromEuler(double roll, double pitch, double yaw,
-                double x=0, double y=0, double z=0) {
-            DT R[9];
-            // DT euler[3] = {DT(roll*180/M_PI), DT(pitch*180/M_PI), DT(yaw*180./M_PI)};
-            // This is ridiculous. The order of parameter is the only one 
-            // I found that lead to the the inverse of the rotation matrix 
-            // I'm looking for. At least the one consistent with TF
-            DT euler[3] = {DT(-yaw*180/M_PI), DT(pitch*180/M_PI), DT(roll*180./M_PI)};
-            
-            ceres::EulerAnglesToRotationMatrix(euler,3,R);
-            ceres::RotationMatrixToQuaternion(R,Q);
-            Q[1]=-Q[1];
-            Q[2]=-Q[2];
-            Q[3]=-Q[3];
+        template <typename DTin>
+            void setFromEuler(DTin roll, DTin pitch, DTin yaw,
+                    DTin x=DTin(0), DTin y=DTin(0), DTin z=DTin(0)) {
+                DT Q0[4] = { DT(1), DT(0), DT(0), DT(0) };
+                DT Q1[4];
+                DT Qroll[4], Qpitch[4], Qyaw[4];
+                DT aaroll[3]={DT(roll),DT(0),DT(0)};
+                ceres::AngleAxisToQuaternion(aaroll, Qroll);
+                DT aapitch[3]={DT(0),DT(pitch),DT(0)};
+                ceres::AngleAxisToQuaternion(aapitch, Qpitch);
+                DT aayaw[3]={DT(0),DT(0),DT(yaw)};
+                ceres::AngleAxisToQuaternion(aayaw, Qyaw);
+                ceres::QuaternionProduct(Qroll,Q0,Q1);
+                ceres::QuaternionProduct(Qpitch,Q1,Q0);
+                ceres::QuaternionProduct(Qyaw,Q0,Q);
 
-            T[0]=DT(x);
-            T[1]=DT(y);
-            T[2]=DT(z);
-        }
+                T[0]=DT(x);
+                T[1]=DT(y);
+                T[2]=DT(z);
+            }
         
 
         TPose<DT> inverse() const {
