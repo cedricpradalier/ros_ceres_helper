@@ -35,6 +35,7 @@ namespace cerise{
             }
 
             void optimise() ;
+            void evaluate() ;
 
     };
 }

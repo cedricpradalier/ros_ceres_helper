@@ -1,7 +1,8 @@
 #ifndef CERES_POSES_H
 #define CERES_POSES_H
-#include "ceres/ceres.h"
-#include "ceres/rotation.h"
+#include <stdio.h>
+#include <ceres/ceres.h>
+#include <ceres/rotation.h>
 
 namespace cerise{ 
     template <typename T>
@@ -128,6 +129,11 @@ namespace cerise{
 
     typedef TPose<double> Pose;
 
+    void printPose(const Pose & P, const char * prefix = NULL, FILE * fp = stdout) {
+        printf("%s%.3f %.3f %.3f | %.3f %.3f %.3f %.3f\n",
+                prefix?prefix:"",
+                P.T[0], P.T[1], P.T[2], P.Q[0], P.Q[1], P.Q[2], P.Q[3]);
+    }
 }
 
 #endif // CERES_POSES_H
