@@ -1,139 +1,45 @@
 #ifndef CERES_POSES_H
 #define CERES_POSES_H
 #include <stdio.h>
-#include <ceres/ceres.h>
-#include <ceres/rotation.h>
+
+#include <ros_ceres_helper/ceres_template_poses.h>
+#include <geometry_msgs/Transform.h>
+#include <geometry_msgs/Pose.h>
+#include <tf/LinearMath/Transform.h>
+#include <tf2/LinearMath/Transform.h>
 
 namespace cerise{ 
-    template <typename T>
-        void invertTransform(const T* const Q, const T* const t,
-                T* Qinv, T* tinv) {
-            Qinv[0]=Q[0];
-            Qinv[1]=-Q[1];
-            Qinv[2]=-Q[2];
-            Qinv[3]=-Q[3];
-            ceres::QuaternionRotatePoint(Qinv, t, tinv);
-            tinv[0]=-tinv[0]; 
-            tinv[1]=-tinv[1]; 
-            tinv[2]=-tinv[2];
-        }
 
-    template <typename T>
-        void applyTransform(const T* const Q, const T* const t, const T* const Pin, T* Pout) {
-            ceres::QuaternionRotatePoint(Q, Pin, Pout);
-            Pout[0]+=t[0]; 
-            Pout[1]+=t[1]; 
-            Pout[2]+=t[2];
-        }
+    class Pose : public TPose<double> {
+        public: 
+            Pose() : TPose<double> () {}
 
-    template <typename T>
-        void composeTransform(const T* const Q1, const T* const t1,
-                const T* const Q2, const T* const t2,
-                T* Q, T* t) {
-            ceres::QuaternionProduct(Q1,Q2,Q);
-            ceres::QuaternionRotatePoint(Q1, t2, t);
-            t[0]+=t1[0]; 
-            t[1]+=t1[1]; 
-            t[2]+=t1[2];
-        }
+            template <typename DTin>
+                Pose(const DTin * const  q, const DTin * const t) : TPose<double>(q,t) {}
 
+            template <typename DTin>
+                Pose(const TPose<DTin> & T) : TPose<double>(T) {}
 
-    template <typename DT>
-    struct TPose {
-        DT T[3];
-        DT Q[4];
-        TPose() {
-            T[0]=T[1]=T[2]=DT(0);
-            ceres::AngleAxisToQuaternion<DT>(T,Q);
-        }
+            void print(const char * prefix = NULL, FILE * fp = stdout) const ;
 
-        template <typename DTin>
-            TPose(const DTin * const  q, const DTin * const t) {
-                    Q[0]=DT(q[0]);
-                    Q[1]=DT(q[1]);
-                    Q[2]=DT(q[2]);
-                    Q[3]=DT(q[3]);
-                    T[0]=DT(t[0]);
-                    T[1]=DT(t[1]);
-                    T[2]=DT(t[2]);
-            }
+            void fromPose(const geometry_msgs::Pose & P) ;
 
-        template <typename DTin>
-            TPose(const TPose<DTin> & T) {
-                    Q[0]=DT(T.Q[0]);
-                    Q[1]=DT(T.Q[1]);
-                    Q[2]=DT(T.Q[2]);
-                    Q[3]=DT(T.Q[3]);
-                    T[0]=DT(T.T[0]);
-                    T[1]=DT(T.T[1]);
-                    T[2]=DT(T.T[2]);
-            }
+            void fromTransform(const geometry_msgs::Transform & P) ;
 
+            void fromTF(const tf::Transform & P) ;
 
-        template <typename DTin>
-            void setFromEuler(DTin roll, DTin pitch, DTin yaw,
-                    DTin x=DTin(0), DTin y=DTin(0), DTin z=DTin(0)) {
-                DT Q0[4] = { DT(1), DT(0), DT(0), DT(0) };
-                DT Q1[4];
-                DT Qroll[4], Qpitch[4], Qyaw[4];
-                DT aaroll[3]={DT(roll),DT(0),DT(0)};
-                ceres::AngleAxisToQuaternion(aaroll, Qroll);
-                DT aapitch[3]={DT(0),DT(pitch),DT(0)};
-                ceres::AngleAxisToQuaternion(aapitch, Qpitch);
-                DT aayaw[3]={DT(0),DT(0),DT(yaw)};
-                ceres::AngleAxisToQuaternion(aayaw, Qyaw);
-                ceres::QuaternionProduct(Qroll,Q0,Q1);
-                ceres::QuaternionProduct(Qpitch,Q1,Q0);
-                ceres::QuaternionProduct(Qyaw,Q0,Q);
+            void fromTF2(const tf2::Transform & P) ;
 
-                T[0]=DT(x);
-                T[1]=DT(y);
-                T[2]=DT(z);
-            }
-        
+            void toPose(geometry_msgs::Pose & P) const ;
 
-        TPose<DT> inverse() const {
-            TPose<DT> out;
-            invertTransform(Q,T,out.Q,out.T);
-            return out;
-        }
+            void toTransform(geometry_msgs::Transform & P) const ;
 
-        TPose<DT> operator*(const TPose<DT> & P2) const {
-            TPose<DT> out;
-            composeTransform(Q,T,P2.Q,P2.T,out.Q,out.T);
-            return out;
-        }
+            void toTF(tf::Transform & P) const ;
 
-        void apply(const DT* const Pin, DT* Pout) const {
-            applyTransform(Q,T,Pin,Pout);
-        }
-
-        template <typename DTout>
-            TPose<DTout> cast() const {
-                TPose<DTout> out;
-                cast<DTout>(out.Q,out.T);
-                return out;
-            }
-
-        template <typename DTout>
-            void cast(DTout * qout, DTout * tout) const {
-                qout[0]=DTout(Q[0]);
-                qout[1]=DTout(Q[1]);
-                qout[2]=DTout(Q[2]);
-                qout[3]=DTout(Q[3]);
-                tout[0]=DTout(T[0]);
-                tout[1]=DTout(T[1]);
-                tout[2]=DTout(T[2]);
-            }
+            void toTF2(tf2::Transform & P) const ;
     };
 
-    typedef TPose<double> Pose;
-
-    void printPose(const Pose & P, const char * prefix = NULL, FILE * fp = stdout) {
-        printf("%s%.3f %.3f %.3f | %.3f %.3f %.3f %.3f\n",
-                prefix?prefix:"",
-                P.T[0], P.T[1], P.T[2], P.Q[0], P.Q[1], P.Q[2], P.Q[3]);
-    }
+    void printPose(const Pose & P, const char * prefix = NULL, FILE * fp = stdout) ;
 }
 
 #endif // CERES_POSES_H

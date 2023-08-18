@@ -9,13 +9,15 @@ add_compile_options(-std=c++11 -g -ggdb -Wall -O3)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED)
+find_package(catkin REQUIRED geometry_msgs tf tf2)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
 
 FIND_PACKAGE(Ceres REQUIRED)
 INCLUDE_DIRECTORIES(${CERES_INCLUDES})
+SET(Ceres_INCLUDE_DIRS ${CERES_INCLUDES})
+SET(Ceres_LIBRARIES ${CERES_LIBRARIES})
 
 
 
@@ -124,6 +126,7 @@ include_directories(
 
 ## Declare a C++ library
 add_library(${PROJECT_NAME}
+  src/ceres_poses.cpp
   src/ceres_flags.cpp
   src/BasicOptimisationProblem.cpp
 )
