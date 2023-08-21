@@ -20,7 +20,7 @@ namespace cerise{
             template <typename DTin>
                 Pose(const TPose<DTin> & T) : TPose<double>(T) {}
 
-            void print(const char * prefix = NULL, FILE * fp = stdout) const ;
+            void print(const char * prefix = NULL, const char * suffix = "\n", FILE * fp = stdout) const ;
 
             void fromPose(const geometry_msgs::Pose & P) ;
 
@@ -39,7 +39,7 @@ namespace cerise{
             void toTF2(tf2::Transform & P) const ;
     };
 
-    void printPose(const Pose & P, const char * prefix = NULL, FILE * fp = stdout) ;
+    void printPose(const Pose & P, const char * prefix = NULL, const char * suffix = "\n", FILE * fp = stdout) ;
 }
 
 #endif // CERES_POSES_H

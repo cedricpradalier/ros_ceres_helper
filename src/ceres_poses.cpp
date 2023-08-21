@@ -4,10 +4,11 @@
 
 namespace cerise{ 
 
-    void Pose::print(const char * prefix, FILE * fp) const {
-        printf("%s%.3f %.3f %.3f | %.3f %.3f %.3f %.3f\n",
+    void Pose::print(const char * prefix, const char * suffix, FILE * fp) const {
+        printf("%s%.3f %.3f %.3f | %.3f %.3f %.3f %.3f%s",
                 prefix?prefix:"",
-                T[0], T[1], T[2], Q[0], Q[1], Q[2], Q[3]);
+                T[0], T[1], T[2], Q[0], Q[1], Q[2], Q[3],
+                suffix?suffix:"\n");
     }
 
     void Pose::fromPose(const geometry_msgs::Pose & P) {
@@ -84,8 +85,8 @@ namespace cerise{
         P.setRotation(tf2::Quaternion(Q[1],Q[2],Q[3],Q[0]));
     }
 
-    void printPose(const Pose & P, const char * prefix, FILE * fp) {
-        P.print(prefix,fp);
+    void printPose(const Pose & P, const char * prefix, const char * suffix, FILE * fp) {
+        P.print(prefix,suffix, fp);
     }
 }
 
