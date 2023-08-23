@@ -4,6 +4,9 @@
 
 namespace cerise{ 
 
+    std::random_device Pose::rd{};
+    std::mt19937 Pose::gen{Pose::rd()};
+
     void Pose::print(const char * prefix, const char * suffix, FILE * fp) const {
         printf("%s%.3f %.3f %.3f | %.3f %.3f %.3f %.3f%s",
                 prefix?prefix:"",
@@ -88,5 +91,25 @@ namespace cerise{
     void printPose(const Pose & P, const char * prefix, const char * suffix, FILE * fp) {
         P.print(prefix,suffix, fp);
     }
+
+    void Pose::randomize(double sigma_trans, double sigma_rot) {
+        std::normal_distribution<double> dt{0.0, sigma_trans};
+        std::normal_distribution<double> dr{0.0, sigma_trans};
+        T[0] = dt(gen);
+        T[1] = dt(gen);
+        T[2] = dt(gen);
+        double aa[3];
+        aa[0] = dr(gen);
+        aa[1] = dr(gen);
+        aa[2] = dr(gen);
+        ceres::AngleAxisToQuaternion(aa,Q);
+    }
+
+    Pose Pose::random(double sigma_trans, double sigma_rot) {
+        Pose out;
+        out.randomize(sigma_trans, sigma_rot);
+        return out;
+    }
+
 }
 

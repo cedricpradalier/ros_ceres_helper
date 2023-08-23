@@ -1,6 +1,7 @@
 #ifndef CERES_POSES_H
 #define CERES_POSES_H
 #include <stdio.h>
+#include <random>
 
 #include <ros_ceres_helper/ceres_template_poses.h>
 #include <geometry_msgs/Transform.h>
@@ -11,6 +12,10 @@
 namespace cerise{ 
 
     class Pose : public TPose<double> {
+        protected:
+            static std::random_device rd;
+            static std::mt19937 gen;
+
         public: 
             Pose() : TPose<double> () {}
 
@@ -21,6 +26,8 @@ namespace cerise{
                 Pose(const TPose<DTin> & T) : TPose<double>(T) {}
 
             void print(const char * prefix = NULL, const char * suffix = "\n", FILE * fp = stdout) const ;
+
+            void randomize(double sigma_trans, double sigma_rot);
 
             void fromPose(const geometry_msgs::Pose & P) ;
 
@@ -37,6 +44,8 @@ namespace cerise{
             void toTF(tf::Transform & P) const ;
 
             void toTF2(tf2::Transform & P) const ;
+
+            static Pose random(double sigma_trans, double sigma_rot);
     };
 
     void printPose(const Pose & P, const char * prefix = NULL, const char * suffix = "\n", FILE * fp = stdout) ;
