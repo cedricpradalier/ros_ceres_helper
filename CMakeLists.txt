@@ -3,7 +3,7 @@ project(ros_ceres_helper)
 
 ## Compile as C++11, supported in ROS Kinetic and newer
 # add_compile_options(-std=c++11)
-add_compile_options(-std=c++11 -g -ggdb -Wall -O3)
+add_compile_options(-std=c++11 -g -ggdb -Wall -O0)
 
 
 ## Find catkin macros and libraries
@@ -156,8 +156,9 @@ add_executable(test_ceres_spline src/test_ceres_spline.cpp)
 # add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
-target_link_libraries(test_ceres_spline
-  ${catkin_LIBRARIES}
+target_link_libraries(test_ceres_spline 
+    ${PROJECT_NAME}
+  ${catkin_LIBRARIES} ${CERES_LIBRARIES} gflags 
 )
 
 #############
