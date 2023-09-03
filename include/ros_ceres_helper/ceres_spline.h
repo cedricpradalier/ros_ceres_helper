@@ -163,15 +163,16 @@ namespace cerise{
 
             bool cum_evaluate(DT u, StorageType fu) const {
                 Eigen::Matrix<DT, 4, 1> Mu = TSplineNamespace<DT>::cum_spline_B(u);
-                Eigen::Matrix<DT, dim, 3> V;
+                Eigen::Matrix<DT, dim, 4> V;
                 Eigen::Matrix<DT, dim, 1> res;
                 for (int j=0;j<dim;j++) {
-                    V(j,0) = K1[j]-K0[j];
-                    V(j,1) = K2[j]-K1[j];
-                    V(j,2) = K3[j]-K2[j];
+                    V(j,0) = DT(0);
+                    V(j,1) = K1[j]-K0[j];
+                    V(j,2) = K2[j]-K1[j];
+                    V(j,3) = K3[j]-K2[j];
                     res(j,0) = K0[j];
                 }
-                res += (V * Mu.block<3,1>(0,1));
+                res += V * Mu;
                 for (int j=0;j<dim;j++) {
                     fu[j]=res(j,0);
                 }
@@ -274,7 +275,11 @@ namespace cerise{
                         T* residuals) const {
                     TRefPtrUniformSpline<T,dim> s(k1,k2,k3,k4);
                     T pred[dim];
+#if 1
                     s.evaluate(T(u),pred);
+#else
+                    s.cum_evaluate(T(u),pred);
+#endif
                     for (int i=0;i<dim;i++) {
                         residuals[i] = (pred[i] - T(y[i]))/T(weight);
                     }
