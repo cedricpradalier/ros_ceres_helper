@@ -262,8 +262,9 @@ namespace cerise{
         struct SplineError {
             double u;
             double y[dim];
+            double weight;
 
-            SplineError(double u, const double *yin) : u(u) {
+            SplineError(double u, const double *yin, double weight=1) : u(u), weight(weight) {
                 std::copy(yin+0,yin+dim,y+0);
             }
 
@@ -275,7 +276,7 @@ namespace cerise{
                     T pred[dim];
                     s.evaluate(T(u),pred);
                     for (int i=0;i<dim;i++) {
-                        residuals[i] = pred[i] - y[i];
+                        residuals[i] = (pred[i] - T(y[i]))/T(weight);
                     }
                     return true;
                 }
