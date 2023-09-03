@@ -2,21 +2,24 @@
 #include "ros_ceres_helper/BasicOptimisationProblem.h"
 #include "ros_ceres_helper/ceres_spline.h"
 
-double x[10] = {1.2, 1.5, 2, 3.5, 4, 5.6, 5.8, 6.0, 8.8, 9};
-double y[10] = {1.5, 0.5, 2.5, 3.5, 3.5, 1.5, -1.8, -2.0, 1.8, 4};
+const unsigned int Nk=5;
+const unsigned int Np=10;
+const double x[Np] = {1.2, 1.5, 2, 3.5, 4, 5.6, 5.8, 6.0, 8.8, 9};
+const double y[Np] = {1.5, 0.5, 2.5, 3.5, 3.5, 1.5, -1.8, -2.0, 1.8, 4};
+const double z[Np] = {3.5, 2.5, 1.5, 2.5, 3.5, 2.5, 1.8, 2.0, 3.8, 4};
 
 
-class SplineTestOpt : public cerise::BasicOptimisationProblem {
+class SplineTestOpt1D : public cerise::BasicOptimisationProblem {
     protected:
         cerise::UniformSpline<cerise::TRefPtrUniformSpline<double,1>> spline;
         std::vector<double> knots;
 
     public:
-        SplineTestOpt() : BasicOptimisationProblem(),  spline(0.,10.,5), knots(5,0.0) {
+        SplineTestOpt1D() : BasicOptimisationProblem(),  spline(0.,10.,Nk), knots(Nk,0.0) {
             for (size_t i=0;i<spline.warper.n_knots;i++) {
                 spline.knots[i] = &knots[i];
             }
-            for (int i=0;i<10;i++) {
+            for (unsigned int i=0;i<Np;i++) {
                 std::pair<size_t,double> iu = spline.warper(x[i]);
                 ceres::LossFunction* loss_function = NULL;
                 ceres::CostFunction *cost_function;
@@ -30,7 +33,7 @@ class SplineTestOpt : public cerise::BasicOptimisationProblem {
         void print() const {
             FILE * fp;
             fp = fopen("input","w");
-            for (size_t i=0;i<10;i++) {
+            for (size_t i=0;i<Np;i++) {
                 fprintf(fp,"%f %f\n",x[i],y[i]);
             }
             fclose(fp);
@@ -44,6 +47,62 @@ class SplineTestOpt : public cerise::BasicOptimisationProblem {
                 double ft=0;
                 spline.evaluate(t,&ft);
                 fprintf(fp,"%f %f\n",t,ft);
+            }
+            fclose(fp);
+        }
+
+};
+
+
+class SplineTestOpt2D : public cerise::BasicOptimisationProblem {
+    protected:
+        cerise::UniformSpline<cerise::TRefPtrUniformSpline<double,2>> spline;
+        double *knots;
+        double *points;
+
+    public:
+        SplineTestOpt2D() : BasicOptimisationProblem(),  spline(0.,10.,Nk) {
+            knots = new double[Nk*2];
+            for (size_t i=0;i<spline.warper.n_knots;i++) {
+                knots[2*i+0] = knots[2*i+1] = 0;
+                spline.knots[i] = knots+2*i;
+            }
+            points = new double[Np*2];
+            for (unsigned int i=0;i<Np;i++) {
+                points[2*i+0]=y[i];
+                points[2*i+1]=z[i];
+                std::pair<size_t,double> iu = spline.warper(x[i]);
+                ceres::LossFunction* loss_function = NULL;
+                ceres::CostFunction *cost_function;
+                cost_function = new ceres::AutoDiffCostFunction<cerise::SplineError<2>,2,2,2,2,2>(
+                            new cerise::SplineError<2>(iu.second,points+2*i));
+                problem->AddResidualBlock(cost_function,loss_function,
+                        &knots[2*(iu.first-1)], &knots[2*iu.first], &knots[2*(iu.first+1)], &knots[2*(iu.first+2)]);
+            }
+        }
+
+        ~SplineTestOpt2D() {
+            delete [] points;
+            delete [] knots;
+        }
+
+        void print() const {
+            FILE * fp;
+            fp = fopen("input2","w");
+            for (size_t i=0;i<Np;i++) {
+                fprintf(fp,"%f %f %f\n",x[i],y[i],z[i]);
+            }
+            fclose(fp);
+            fp = fopen("knots2","w");
+            for (size_t i=0;i<spline.warper.n_knots;i++) {
+                fprintf(fp,"%f %f %f\n",spline.warper.knot(i),knots[2*i+0],knots[2*i+1]);
+            }
+            fclose(fp);
+            fp = fopen("spline2","w");
+            for (double t=spline.warper.min();t<spline.warper.max();t+=0.01) {
+                double ft[2]={0,0};
+                spline.evaluate(t,ft);
+                fprintf(fp,"%f %f %f\n",t,ft[0],ft[1]);
             }
             fclose(fp);
         }
@@ -74,9 +133,14 @@ int main(int argc, char * argv[]) {
     fclose(fp);
 
 #if 1
-    SplineTestOpt to;
+    SplineTestOpt1D to;
     to.optimise();
     to.print();
+#endif
+#if 1
+    SplineTestOpt2D t2;
+    t2.optimise();
+    t2.print();
 #endif
     return 0;
 }
