@@ -5,47 +5,47 @@
 double x[10] = {1.2, 1.5, 2, 3.5, 4, 5.6, 5.8, 6.0, 8.8, 9};
 double y[10] = {1.5, 0.5, 2.5, 3.5, 3.5, 1.5, -1.8, -2.0, 1.8, 4};
 
-struct SplineError {
-    double u,y;
-    SplineError(double u, double y) : u(u), y(y) {}
-
-
-    template <typename T>
-        bool operator()(const T *const k1, const T* const k2, const T* const k3, const T *const k4,
-                T* residuals) const {
-            Eigen::Matrix<T, 4, 1> Mu = cerise::spline_B(T(u));
-            Eigen::Matrix<T, 1, 4> V;
-            V << k1[0],k2[0],k3[0],k4[0];
-            T out = (V * Mu)(0);
-            residuals[0] = out - y;
-            return true;
-        }
-};
 
 class SplineTestOpt : public cerise::BasicOptimisationProblem {
     protected:
+        cerise::UniformSpline<cerise::TRefPtrUniformSpline<double,1>> spline;
         std::vector<double> knots;
 
-
     public:
-        SplineTestOpt() : BasicOptimisationProblem(), knots(5,0.0) {
+        SplineTestOpt() : BasicOptimisationProblem(),  spline(0.,10.,5), knots(5,0.0) {
+            for (size_t i=0;i<spline.warper.n_knots;i++) {
+                spline.knots[i] = &knots[i];
+            }
             for (int i=0;i<10;i++) {
-                int j = floor(x[i]);
-                j = std::min<int>(std::max<int>(j,1),knots.size()-3);
-                double u = x[i] - j;
+                std::pair<size_t,double> iu = spline.warper(x[i]);
                 ceres::LossFunction* loss_function = NULL;
                 ceres::CostFunction *cost_function;
-                cost_function = new ceres::AutoDiffCostFunction<SplineError,1,1,1,1,1>(
-                            new SplineError(u,y[i]));
+                cost_function = new ceres::AutoDiffCostFunction<cerise::SplineError<1>,1,1,1,1,1>(
+                            new cerise::SplineError<1>(iu.second,y+i));
                 problem->AddResidualBlock(cost_function,loss_function,
-                        &knots[i-1], &knots[i], &knots[i+1], &knots[i+2]);
+                        &knots[iu.first-1], &knots[iu.first], &knots[iu.first+1], &knots[iu.first+2]);
             }
         }
 
         void print() const {
-            for (size_t i=0;i<knots.size();i++) {
-                printf("%d %f\n",int(i),knots[i]);
+            FILE * fp;
+            fp = fopen("input","w");
+            for (size_t i=0;i<10;i++) {
+                fprintf(fp,"%f %f\n",x[i],y[i]);
             }
+            fclose(fp);
+            fp = fopen("knots","w");
+            for (size_t i=0;i<spline.warper.n_knots;i++) {
+                fprintf(fp,"%f %f\n",spline.warper.knot(i),knots[i]);
+            }
+            fclose(fp);
+            fp = fopen("spline","w");
+            for (double t=spline.warper.min();t<spline.warper.max();t+=0.01) {
+                double ft=0;
+                spline.evaluate(t,&ft);
+                fprintf(fp,"%f %f\n",t,ft);
+            }
+            fclose(fp);
         }
 
 };
@@ -55,18 +55,28 @@ int main(int argc, char * argv[]) {
     
     double knots[8] = {1,0,1,-1,-2,-1,3,1};
 
-    cerise::TRefUniformSpline<double> S(knots+0, knots+8);
+    cerise::GenericSpline1D S(0.,7.,8);
+    S.import(knots);
 
-    FILE * fp=fopen("stest","w");
+    FILE * fp;
+    fp=fopen("sknots","w");
+    for (size_t i=0;i<S.knots.size();i++) {
+        fprintf(fp,"%f %f\n",S.warper.knot(i),S.knots[i]);
+    }
+    fclose(fp);
+    fp=fopen("stest","w");
     for (double t=1;t<=6;t+=0.01) {
-        double v = S.evaluate(t);
-        double c = S.cum_evaluate(t);
+        double v=0,c=0;
+        S.evaluate(t,v);
+        S.cum_evaluate(t,c);
         fprintf(fp,"%f\t%f\t%f\n",t,v,c);
     }
     fclose(fp);
 
+#if 1
     SplineTestOpt to;
     to.optimise();
     to.print();
+#endif
     return 0;
 }
