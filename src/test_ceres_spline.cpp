@@ -126,8 +126,8 @@ int main(int argc, char * argv[]) {
     fp=fopen("stest","w");
     for (double t=1;t<=6;t+=0.01) {
         double v=0,c=0;
-        S.evaluate(t,v);
-        S.cum_evaluate(t,c);
+        S.evaluate(t,&v);
+        S.cum_evaluate(t,&c);
         fprintf(fp,"%f\t%f\t%f\n",t,v,c);
     }
     fclose(fp);

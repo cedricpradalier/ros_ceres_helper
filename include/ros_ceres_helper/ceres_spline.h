@@ -20,11 +20,221 @@ namespace cerise{
             1.0 / 6.0 , 3.0 / 6.0 , 3.0 / 6.0  , -2.0 / 6.0 ,
             0.0       , 0.0       , 0.0        ,  1.0 / 6.0).finished();
 
-    template <typename T>
-        struct TSplineNamespace {
+    template <typename DT, int dim, int localdim>
+        struct DataDescriptor {
+            static const unsigned int dimension = dim;
+            static const unsigned int local_dimension = localdim;
+            typedef DT DataType;
+
+            typedef Eigen::Matrix<DT,localdim,1> LogVarType;
+            typedef const Eigen::Matrix<DT,localdim,1> & ConstRefLogType;
+            typedef Eigen::Matrix<DT,localdim,1>& LogWritableType;
+
+            DataDescriptor() {}
+            virtual ~DataDescriptor() {}
+
+           
+            /*
+             * Must provide the following:
+             *
+            typedef DT DataType;
+            typedef DT VarType;
+            typedef DT & RefType;
+            typedef const DT & ConstRefType;
+            typedef DT * WritableType;
+
+            virtual VarType create() const = 0;
+
+            virtual destroy(RefType v) const = 0;
+
+            virtual void set(ConstRefType x, WritableType y) const = 0;
+
+            virtual WritableType writable(RefType x) const = 0;
+
+            virtual void exp(ConstRefLogType x, WritableType y) const = 0;
+
+            virtual void log(ConstRefType x, LogWritableType y) const = 0;
+            
+            virtual void add(ConstRefType v1, ConstRefType v2, WritableType v3) const = 0;
+
+            virtual void sub(ConstRefType v1, ConstRefType v2, WritableType v3) const = 0;
+            */
+
+        };
+
+    template <typename DT>
+        struct DataDescriptor1D : public DataDescriptor<DT, 1, 1> {
+            typedef DT DataType;
+            typedef DT VarType;
+            typedef DT & RefType;
+            typedef const DT & ConstRefType;
+            typedef DT * WritableType;
+
+            typedef typename DataDescriptor<DT,1,1>::LogVarType LogVarType;
+            typedef typename DataDescriptor<DT,1,1>::ConstRefLogType ConstRefLogType;
+            typedef typename DataDescriptor<DT,1,1>::LogWritableType LogWritableType;
+
+            virtual VarType create() const {
+                return DT(0);
+            }
+
+            virtual void destroy(RefType v) const {}
+
+            virtual void set(ConstRefType x, WritableType y) const {
+                *y = x;
+            }
+
+            virtual WritableType writable(RefType x) const {
+                return &x;
+            }
+
+            virtual void exp(ConstRefLogType x, WritableType y) const  {
+                *y = x(0);
+            }
+
+            virtual void log(ConstRefType x, LogWritableType y) const {
+                y(0) = x;
+            }
+            
+            virtual void add(ConstRefType v1, ConstRefType v2, WritableType v3) const {
+                *v3 = v1 + v2;
+            }
+
+            virtual void sub(ConstRefType v1, ConstRefType v2, WritableType v3) const {
+                *v3 = v1 - v2;
+            }
+        };
+
+    template <typename DT, int dim>
+        struct DataDescriptorPtr : public DataDescriptor<DT, dim, dim> {
+            typedef DT DataType;
+            typedef DT* VarType;
+            typedef DT* RefType;
+            typedef const DT * ConstRefType;
+            typedef DT * WritableType;
+
+            typedef typename DataDescriptor<DT,dim,dim>::LogVarType LogVarType;
+            typedef typename DataDescriptor<DT,dim,dim>::ConstRefLogType ConstRefLogType;
+            typedef typename DataDescriptor<DT,dim,dim>::LogWritableType LogWritableType;
+
+            virtual VarType create() const {
+                return new DT[dim];
+            }
+
+            virtual void destroy(RefType v) const {
+                delete [] v;
+            }
+
+
+            virtual void set(ConstRefType x, WritableType y) const {
+                for (int i=0;i<dim;i++) {
+                    y[i] = x[i];
+                }
+            }
+
+            virtual WritableType writable(RefType x) const {
+                return x;
+            }
+
+
+            virtual void exp(ConstRefLogType x, WritableType y) const  {
+                for (int i=0;i<dim;i++) {
+                    y[i] = x(i,0);
+                }
+            }
+
+            virtual void log(ConstRefType x, LogWritableType y) const {
+                for (int i=0;i<dim;i++) {
+                    y(i,0) = x[i];
+                }
+            }
+            
+            virtual void add(ConstRefType v1, ConstRefType v2, WritableType v3) const {
+                for (int i=0;i<dim;i++) {
+                    v3[i] = v1[i] + v2[i];
+                }
+            }
+
+            virtual void sub(ConstRefType v1, ConstRefType v2, WritableType v3) const {
+                for (int i=0;i<dim;i++) {
+                    v3[i] = v1[i] - v2[i];
+                }
+            }
+        };
+
+    template <typename DT, int dim>
+        struct DataDescriptorEigen : public DataDescriptor<DT, dim, dim> {
+            typedef DT DataType;
+            typedef Eigen::Matrix<DT,dim,1> VarType;
+            typedef VarType& RefType;
+            typedef const VarType & ConstRefType;
+            typedef VarType * WritableType;
+
+            typedef typename DataDescriptor<DT,dim,dim>::LogVarType LogVarType;
+            typedef typename DataDescriptor<DT,dim,dim>::ConstRefLogType ConstRefLogType;
+            typedef typename DataDescriptor<DT,dim,dim>::LogWritableType LogWritableType;
+
+            virtual VarType create() const {
+                return VarType::Zero();
+            }
+
+            virtual void destroy(RefType v) const {}
+
+
+            virtual void set(ConstRefType x, WritableType y) const {
+                *y = x;
+            }
+
+            virtual WritableType writable(RefType x) const {
+                return &x;
+            }
+
+            virtual void exp(ConstRefLogType x, WritableType y) const  {
+                *y = x;
+            }
+
+            virtual void log(ConstRefType x, LogWritableType y) const {
+                *y = x;
+            }
+            
+            virtual void add(ConstRefType v1, ConstRefType v2, WritableType v3) const {
+                *v3 = v1 + v2;
+            }
+
+            virtual void sub(ConstRefType v1, ConstRefType v2, WritableType v3) const {
+                *v3 = v1 - v2;
+            }
+        };
+
+
+    template <class Descriptor>
+        class TSplineNamespace {
+            public:
+            typedef Descriptor DescriptorType;
+            typedef typename Descriptor::DataType T;
+            protected:
             const Eigen::Matrix4d & M;
             const Eigen::Matrix4d & C;
-            TSplineNamespace() : M(SplineBaseMatrixM), C(SplineBaseMatrixC) {}
+            Descriptor D;
+            public:
+
+            TSplineNamespace(const Descriptor & D = Descriptor()) : M(SplineBaseMatrixM), C(SplineBaseMatrixC), D(D) { }
+
+            typename Descriptor::VarType create() const { return D.create(); }
+
+            void destroy(typename Descriptor::RefType v) const {D.destroy(v);}
+
+            void set(typename Descriptor::ConstRefType v, typename Descriptor::WritableType v3) const { D.set(v,v3); }
+
+            typename Descriptor::WritableType writable(typename Descriptor::RefType v) const { return D.writable(v); }
+
+            void exp(typename Descriptor::ConstRefLogType x, typename Descriptor::WritableType y) const { D.exp(x,y);}
+
+            void log(typename Descriptor::ConstRefType x, typename Descriptor::LogWritableType y) const { D.log(x,y);}
+            
+            void add(typename Descriptor::ConstRefType v1, typename Descriptor::ConstRefType v2, typename Descriptor::WritableType v3) const { D.add(v1,v2,v3); }
+
+            void sub(typename Descriptor::ConstRefType v1, typename Descriptor::ConstRefType v2, typename Descriptor::WritableType v3) const { D.sub(v1,v2,v3); }
 
             static Eigen::Matrix<T, 4, 1> spline_B(T u) {
                 Eigen::Matrix<T, 4, 1> U(T(1.0), u, u * u, u * u * u);
@@ -96,42 +306,88 @@ namespace cerise{
     };
 
 
+    template <typename DescriptorType>
+        struct TRefUniformSpline : public TSplineNamespace<DescriptorType> {
+            typedef typename DescriptorType::DataType DataType;
+            typedef typename DescriptorType::VarType VarType;
+            typedef typename DescriptorType::LogVarType LogVarType;
+            typedef typename DescriptorType::ConstRefType ConstRefType;
+            typedef typename DescriptorType::WritableType WritableType;
 
-    template <typename DT>
-        struct TRef1DUniformSpline : public TSplineNamespace<DT> {
-            typedef DT DataType;
-            typedef DT StorageType;
-            typedef const DT & ConstStorageType;
+            ConstRefType K0;
+            ConstRefType K1;
+            ConstRefType K2;
+            ConstRefType K3;
+            LogVarType lK[4], dK[3];
 
-            ConstStorageType K0;
-            ConstStorageType K1;
-            ConstStorageType K2;
-            ConstStorageType K3;
-            TRef1DUniformSpline(ConstStorageType k0, ConstStorageType k1, ConstStorageType k2, ConstStorageType k3) 
+            TRefUniformSpline(ConstRefType k0, ConstRefType k1, ConstRefType k2, ConstRefType k3) 
                 : K0(k0), K1(k1), K2(k2), K3(k3)
-            { }
+            { 
+                VarType diff=this->create();
+                this->log(K0,lK[0]); 
+                this->log(K1,lK[1]); 
+                this->log(K2,lK[2]); 
+                this->log(K3,lK[3]);
+                this->sub(K1,K0,this->writable(diff)); this->log(diff,dK[0]);
+                this->sub(K2,K1,this->writable(diff)); this->log(diff,dK[1]);
+                this->sub(K3,K2,this->writable(diff)); this->log(diff,dK[2]);
+                this->destroy(diff);
+            }
 
-            bool evaluate(DT u, StorageType & fu) const {
-                // int i = floor(t);
-                // i = std::min<int>(std::max<int>(i,1),knot.size()-3);
-                // IT u = t - IT(i);
-                Eigen::Matrix<DT, 4, 1> Mu = TSplineNamespace<DT>::spline_B(u);
-                Eigen::Matrix<DT, 1, 4> V;
-                V << K0, K1, K2, K3;
-                fu = (V * Mu)(0);
+            bool evaluate(DataType u, WritableType fu) const {
+                Eigen::Matrix<DataType, 4, 1> Mu = TSplineNamespace<DescriptorType>::spline_B(u);
+                VarType R = this->create();
+                this->exp(LogVarType::Zero(),this->writable(R));
+                VarType ex = this->create();
+                for (int i=0;i<4;i++) {
+                    this->exp(Mu(i,0)*lK[i], this->writable(ex));
+                    this->add(R,ex,this->writable(R));
+                }
+                this->set(R, fu);
+                this->destroy(ex);
+                this->destroy(R);
                 // std::cout << "Evaluate " << u << " " << V << " " << Mu.transpose() << " " << fu << std::endl;
                 return true;
             }
 
-            bool cum_evaluate(DT u, StorageType & fu) const {
-                Eigen::Matrix<DT, 4, 1> Mu = TSplineNamespace<DT>::cum_spline_B(u);
-                Eigen::Matrix<DT, 1, 4> V;
-                V << DT(0), K1-K0, K2-K1, K3-K2;
-                fu = K0 + (V * Mu)(0);
+            bool cum_evaluate(DataType u, WritableType fu) const {
+                Eigen::Matrix<DataType, 4, 1> Mu = TSplineNamespace<DescriptorType>::cum_spline_B(u);
+                VarType R = this->create();
+                this->set(K0,this->writable(R));
+                VarType ex = this->create();
+                for (int i=1;i<4;i++) {
+                    this->exp(Mu(i,0)*dK[i-1], this->writable(ex));
+                    this->add(R,ex,this->writable(R));
+                }
+                this->set(R, fu);
+                this->destroy(ex);
+                this->destroy(R);
                 return true;
             }
         };
 
+    template <typename DT> 
+        struct TRef1DUniformSpline : public TRefUniformSpline<DataDescriptor1D<DT>> {
+            typedef typename TRefUniformSpline<DataDescriptor1D<DT>>::ConstRefType ConstRefType;
+            TRef1DUniformSpline(ConstRefType k0, ConstRefType k1, ConstRefType k2, ConstRefType k3) :
+                TRefUniformSpline<DataDescriptor1D<DT>>(k0,k1,k2,k3) {}
+        };
+
+    template <typename DT, int dim> 
+        struct TRefPtrUniformSpline : public TRefUniformSpline<DataDescriptorPtr<DT,dim>> {
+            typedef typename TRefUniformSpline<DataDescriptorPtr<DT,dim>>::ConstRefType ConstRefType;
+            TRefPtrUniformSpline(ConstRefType k0, ConstRefType k1, ConstRefType k2, ConstRefType k3) :
+                TRefUniformSpline<DataDescriptorPtr<DT,dim>>(k0,k1,k2,k3) {}
+        };
+
+    template <typename DT, int dim> 
+        struct TRefEigenUniformSpline : public TRefUniformSpline<DataDescriptorEigen<DT,dim>> {
+            typedef typename TRefUniformSpline<DataDescriptorEigen<DT,dim>>::ConstRefType ConstRefType;
+            TRefEigenUniformSpline(ConstRefType k0, ConstRefType k1, ConstRefType k2, ConstRefType k3) :
+                TRefUniformSpline<DataDescriptorEigen<DT,dim>>(k0,k1,k2,k3) {}
+        };
+
+#if 0
     template <typename DT, int dim>
         struct TRefPtrUniformSpline  : public TSplineNamespace<DT> {
             typedef DT DataType;
@@ -214,10 +470,11 @@ namespace cerise{
                 return true;
             }
         };
+#endif
 
     template <class SplineType> 
         struct UniformSpline {
-            std::vector<typename SplineType::StorageType> knots;
+            std::vector<typename SplineType::VarType> knots;
             TimeWarper warper;
 
             UniformSpline(double tmin, double tmax, size_t n_knots) : knots(n_knots), warper(tmin, (tmax-tmin)/(n_knots-1) , n_knots) {}
@@ -229,31 +486,19 @@ namespace cerise{
                     std::copy(begin,begin+knots.size(),knots.begin());
                 }
 
-            bool evaluate(typename SplineType::DataType t, typename SplineType::StorageType && fu) const {
+            bool evaluate(typename SplineType::DataType t, typename SplineType::WritableType fu) const {
                 std::pair<size_t,typename SplineType::DataType> iu = warper(t);
                 // printf("S Evaluate t=%f, i=%d, u=%f\n",t,int(iu.first),iu.second);
                 SplineType s(knots[iu.first-1],knots[iu.first],knots[iu.first+1],knots[iu.first+2]);
                 return s.evaluate(iu.second, fu);
             }
 
-            bool cum_evaluate(typename SplineType::DataType t, typename SplineType::StorageType && fu) const {
+            bool cum_evaluate(typename SplineType::DataType t, typename SplineType::WritableType fu) const {
                 std::pair<size_t,typename SplineType::DataType> iu = warper(t);
                 SplineType s(knots[iu.first-1],knots[iu.first],knots[iu.first+1],knots[iu.first+2]);
                 return s.cum_evaluate(iu.second, fu);
             }
 
-            bool evaluate(typename SplineType::DataType t, typename SplineType::StorageType & fu) const {
-                std::pair<size_t,typename SplineType::DataType> iu = warper(t);
-                // printf("S Evaluate t=%f, i=%d, u=%f\n",t,int(iu.first),iu.second);
-                SplineType s(knots[iu.first-1],knots[iu.first],knots[iu.first+1],knots[iu.first+2]);
-                return s.evaluate(iu.second, fu);
-            }
-
-            bool cum_evaluate(typename SplineType::DataType t, typename SplineType::StorageType & fu) const {
-                std::pair<size_t,typename SplineType::DataType> iu = warper(t);
-                SplineType s(knots[iu.first-1],knots[iu.first],knots[iu.first+1],knots[iu.first+2]);
-                return s.cum_evaluate(iu.second, fu);
-            }
 
         };
 
@@ -289,7 +534,11 @@ namespace cerise{
 
 
 
+    // TODO: Add Data Descriptor
+    // TODO: Add Pointer type parameter
     // TODO: Quaternion Spline
+    // TODO: TimeWarper, add derivative scaling.
+    // TODO: Add eval with derivative
 }
 
 
