@@ -113,6 +113,7 @@ class SplineTestOpt2D : public cerise::BasicOptimisationProblem {
 int main(int argc, char * argv[]) {
     
     double knots[8] = {1,0,1,-1,-2,-1,3,1};
+    cerise::TRefQuaternionUniformSpline<double> qS(knots+0,knots+1,knots+2,knots+3);
 
     cerise::GenericSpline1D S(0.,7.,8);
     S.import(knots);

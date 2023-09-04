@@ -2,6 +2,7 @@
 #define CERES_SPLINES_H
 
 #include <ceres/ceres.h>
+#include <ceres/rotation.h>
 #include <Eigen/Dense>
 #include <vector>
 
@@ -162,6 +163,60 @@ namespace cerise{
             }
         };
 
+    template <typename DT>
+        struct DataDescriptorQuaternion : public DataDescriptor<DT, 4, 3> {
+            typedef DT DataType;
+            typedef DT* VarType;
+            typedef DT* RefType;
+            typedef const DT * ConstRefType;
+            typedef DT * WritableType;
+
+            typedef typename DataDescriptor<DT,4,3>::LogVarType LogVarType;
+            typedef typename DataDescriptor<DT,4,3>::ConstRefLogType ConstRefLogType;
+            typedef typename DataDescriptor<DT,4,3>::LogWritableType LogWritableType;
+
+            virtual VarType create() const {
+                return new DT[4];
+            }
+
+            virtual void destroy(RefType v) const {
+                delete [] v;
+            }
+
+
+            virtual void set(ConstRefType x, WritableType y) const {
+                for (int i=0;i<4;i++) {
+                    y[i] = x[i];
+                }
+            }
+
+            virtual WritableType writable(RefType x) const {
+                return x;
+            }
+
+
+            virtual void exp(ConstRefLogType x, WritableType y) const  {
+                DT aa[3] = {x(0,0), x(1,0), x(2,0)};
+                ceres::AngleAxisToQuaternion(aa,y);
+            }
+
+            virtual void log(ConstRefType x, LogWritableType y) const {
+                DT aa[3];
+                ceres::QuaternionToAngleAxis(x,aa);
+                y << aa[0], aa[1], aa[2];
+            }
+            
+            virtual void add(ConstRefType v1, ConstRefType v2, WritableType v3) const {
+                ceres::QuaternionProduct(v1,v2,v3);
+            }
+
+            virtual void sub(ConstRefType v1, ConstRefType v2, WritableType v3) const {
+                DT v2inv[4] = {v2[0],-v2[1],-v2[2],-v2[3]};
+                ceres::QuaternionProduct(v1,v2inv,v3);
+            }
+        };
+
+
     template <typename DT, int dim>
         struct DataDescriptorEigen : public DataDescriptor<DT, dim, dim> {
             typedef DT DataType;
@@ -278,6 +333,16 @@ namespace cerise{
         TimeWarper(double t0, double delta, size_t n_knots) :
             t0(t0), delta(delta), n_knots(n_knots) {}
 
+        // Scaling factor for derivative of u(t) 
+        double dudt_scale() const {
+            return 1/delta;
+        }
+
+        // Scaling factor for 2nd derivative of u(t)
+        double d2udt2_scale() const {
+            return 1/(delta*delta);
+        }
+
         template <typename IT> 
             std::pair<size_t, IT> operator()(IT t) const {
                 int i = floor(t);
@@ -313,6 +378,7 @@ namespace cerise{
             typedef typename DescriptorType::LogVarType LogVarType;
             typedef typename DescriptorType::ConstRefType ConstRefType;
             typedef typename DescriptorType::WritableType WritableType;
+            typedef typename DescriptorType::LogWritableType LogWritableType;
 
             ConstRefType K0;
             ConstRefType K1;
@@ -335,6 +401,22 @@ namespace cerise{
             }
 
             bool evaluate(DataType u, WritableType fu) const {
+                Eigen::Matrix<DataType, 4, 1> Mu = TSplineNamespace<DescriptorType>::spline_B(u);
+                VarType R = this->create();
+                this->exp(LogVarType::Zero(),this->writable(R));
+                VarType ex = this->create();
+                for (int i=0;i<4;i++) {
+                    this->exp(Mu(i,0)*lK[i], this->writable(ex));
+                    this->add(R,ex,this->writable(R));
+                }
+                this->set(R, fu);
+                this->destroy(ex);
+                this->destroy(R);
+                // std::cout << "Evaluate " << u << " " << V << " " << Mu.transpose() << " " << fu << std::endl;
+                return true;
+            }
+
+            bool evaluate(DataType u, WritableType fu, LogWritableType dfudt, LogWritableType d2fudt2) const {
                 Eigen::Matrix<DataType, 4, 1> Mu = TSplineNamespace<DescriptorType>::spline_B(u);
                 VarType R = this->create();
                 this->exp(LogVarType::Zero(),this->writable(R));
@@ -380,97 +462,19 @@ namespace cerise{
                 TRefUniformSpline<DataDescriptorPtr<DT,dim>>(k0,k1,k2,k3) {}
         };
 
+    template <typename DT> 
+        struct TRefQuaternionUniformSpline : public TRefUniformSpline<DataDescriptorQuaternion<DT>> {
+            typedef typename TRefUniformSpline<DataDescriptorQuaternion<DT>>::ConstRefType ConstRefType;
+            TRefQuaternionUniformSpline(ConstRefType k0, ConstRefType k1, ConstRefType k2, ConstRefType k3) :
+                TRefUniformSpline<DataDescriptorQuaternion<DT>>(k0,k1,k2,k3) {}
+        };
+
     template <typename DT, int dim> 
         struct TRefEigenUniformSpline : public TRefUniformSpline<DataDescriptorEigen<DT,dim>> {
             typedef typename TRefUniformSpline<DataDescriptorEigen<DT,dim>>::ConstRefType ConstRefType;
             TRefEigenUniformSpline(ConstRefType k0, ConstRefType k1, ConstRefType k2, ConstRefType k3) :
                 TRefUniformSpline<DataDescriptorEigen<DT,dim>>(k0,k1,k2,k3) {}
         };
-
-#if 0
-    template <typename DT, int dim>
-        struct TRefPtrUniformSpline  : public TSplineNamespace<DT> {
-            typedef DT DataType;
-            typedef DT* StorageType;
-            typedef const DT* ConstStorageType;
-            ConstStorageType K0;
-            ConstStorageType K1;
-            ConstStorageType K2;
-            ConstStorageType K3;
-            TRefPtrUniformSpline(ConstStorageType k0, ConstStorageType k1, ConstStorageType k2, ConstStorageType k3) 
-                : K0(k0), K1(k1), K2(k2), K3(k3)
-            { }
-
-            bool evaluate(DT u, StorageType fu/*, DT *dfdu, DT *d2fdu2*/) const {
-                Eigen::Matrix<DT, 4, 1> Mu = TSplineNamespace<DT>::spline_B(u);
-                Eigen::Matrix<DT, dim, 4> V;
-                for (int j=0;j<dim;j++) {
-                    V(j,0) = K0[j];
-                    V(j,1) = K1[j];
-                    V(j,2) = K2[j];
-                    V(j,3) = K3[j];
-                }
-                Eigen::Matrix<DT, dim, 1>  res = V * Mu;
-                for (int j=0;j<dim;j++) {
-                    fu[j]=res(j,0);
-                }
-                return true;
-            }
-
-            bool cum_evaluate(DT u, StorageType fu) const {
-                Eigen::Matrix<DT, 4, 1> Mu = TSplineNamespace<DT>::cum_spline_B(u);
-                Eigen::Matrix<DT, dim, 4> V;
-                Eigen::Matrix<DT, dim, 1> res;
-                for (int j=0;j<dim;j++) {
-                    V(j,0) = DT(0);
-                    V(j,1) = K1[j]-K0[j];
-                    V(j,2) = K2[j]-K1[j];
-                    V(j,3) = K3[j]-K2[j];
-                    res(j,0) = K0[j];
-                }
-                res += V * Mu;
-                for (int j=0;j<dim;j++) {
-                    fu[j]=res(j,0);
-                }
-                return true;
-            }
-        };
-
-    template <typename DT, int dim>
-        struct TRefEigenUniformSpline  : public TSplineNamespace<DT> {
-            typedef DT DataType;
-            typedef Eigen::Matrix<DT,dim,1> StorageType;
-            typedef const Eigen::Matrix<DT,dim,1> & ConstStorageType;
-            ConstStorageType K0;
-            ConstStorageType K1;
-            ConstStorageType K2;
-            ConstStorageType K3;
-            TRefEigenUniformSpline(ConstStorageType k0, ConstStorageType k1, ConstStorageType k2, ConstStorageType k3) 
-                : K0(k0), K1(k1), K2(k2), K3(k3)
-            { }
-
-            bool evaluate(DT u, StorageType & fu) const {
-                Eigen::Matrix<DT, 4, 1> Mu = TSplineNamespace<DT>::spline_B(u);
-                Eigen::Matrix<DT, dim, 4> V;
-                V.col(0) = K0;
-                V.col(1) = K1;
-                V.col(2) = K2;
-                V.col(3) = K3;
-                fu = V * Mu;
-                return true;
-            }
-
-            bool cum_evaluate(DT u , StorageType & fu) const {
-                Eigen::Matrix<DT, 4, 1> Mu = TSplineNamespace<DT>::cum_spline_B(u);
-                Eigen::Matrix<DT, dim, 3> V;
-                V.col(0) = K1-K0;
-                V.col(1) = K2-K1;
-                V.col(2) = K3-K2;
-                fu = K0 + (V * Mu.block<3,1>(0,1));
-                return true;
-            }
-        };
-#endif
 
     template <class SplineType> 
         struct UniformSpline {
@@ -493,6 +497,19 @@ namespace cerise{
                 return s.evaluate(iu.second, fu);
             }
 
+            bool evaluate(typename SplineType::DataType t, typename SplineType::WritableType fu,
+                    typename SplineType::LogWritableType dfudt,  typename SplineType::LogWritableType d2fudt2) const {
+                std::pair<size_t,typename SplineType::DataType> iu = warper(t);
+                // printf("S Evaluate t=%f, i=%d, u=%f\n",t,int(iu.first),iu.second);
+                SplineType s(knots[iu.first-1],knots[iu.first],knots[iu.first+1],knots[iu.first+2]);
+                if (!s.evaluate(iu.second, fu, dfudt, d2fudt2)) {
+                    return false;
+                }
+                dfudt *= warper.dudt_scale();
+                d2fudt2 *= warper.d2udt2_scale();
+                return true;
+            }
+
             bool cum_evaluate(typename SplineType::DataType t, typename SplineType::WritableType fu) const {
                 std::pair<size_t,typename SplineType::DataType> iu = warper(t);
                 SplineType s(knots[iu.first-1],knots[iu.first],knots[iu.first+1],knots[iu.first+2]);
@@ -509,8 +526,9 @@ namespace cerise{
             double u;
             double y[dim];
             double weight;
+            bool cum_eval;
 
-            SplineError(double u, const double *yin, double weight=1) : u(u), weight(weight) {
+            SplineError(double u, const double *yin, double weight=1, bool cum_eval=false) : u(u), weight(weight), cum_eval(cum_eval) {
                 std::copy(yin+0,yin+dim,y+0);
             }
 
@@ -520,11 +538,12 @@ namespace cerise{
                         T* residuals) const {
                     TRefPtrUniformSpline<T,dim> s(k1,k2,k3,k4);
                     T pred[dim];
-#if 1
-                    s.evaluate(T(u),pred);
-#else
-                    s.cum_evaluate(T(u),pred);
-#endif
+                    if (cum_eval) {
+                        s.cum_evaluate(T(u),pred);
+                    } else {
+                        s.evaluate(T(u),pred);
+                    }
+
                     for (int i=0;i<dim;i++) {
                         residuals[i] = (pred[i] - T(y[i]))/T(weight);
                     }
@@ -534,10 +553,7 @@ namespace cerise{
 
 
 
-    // TODO: Add Data Descriptor
-    // TODO: Add Pointer type parameter
-    // TODO: Quaternion Spline
-    // TODO: TimeWarper, add derivative scaling.
+    // TODO: Split file for readability
     // TODO: Add eval with derivative
 }
 
