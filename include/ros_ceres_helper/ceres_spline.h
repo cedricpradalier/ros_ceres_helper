@@ -119,7 +119,11 @@ namespace cerise{
             typedef typename DataDescriptor<DT,dim,dim>::LogWritableType LogWritableType;
 
             virtual VarType create() const {
-                return new DT[dim];
+                DT * P = new DT[dim];
+                for (int i=0;i<dim;i++) {
+                    P[i] = DT(0);
+                }
+                return P;
             }
 
             virtual void destroy(RefType v) const {
@@ -176,7 +180,10 @@ namespace cerise{
             typedef typename DataDescriptor<DT,4,3>::LogWritableType LogWritableType;
 
             virtual VarType create() const {
-                return new DT[4];
+                DT aa[3] = {DT(0),DT(0),DT(0)};
+                DT * P = new DT[4];
+                ceres::AngleAxisToQuaternion(aa,P);
+                return P;
             }
 
             virtual void destroy(RefType v) const {
@@ -546,6 +553,34 @@ namespace cerise{
 
                     for (int i=0;i<dim;i++) {
                         residuals[i] = (pred[i] - T(y[i]))/T(weight);
+                    }
+                    return true;
+                }
+        };
+
+        struct SplineErrorQ {
+            double u;
+            double q[4];
+            double weight;
+
+            SplineErrorQ(double u, const double *yin, double weight=1) : u(u), weight(weight) {
+                std::copy(yin+0,yin+4,q+0);
+            }
+
+
+            template <typename T>
+                bool operator()(const T *const k1, const T* const k2, const T* const k3, const T *const k4,
+                        T* residuals) const {
+                    DataDescriptorQuaternion<T> D;
+                    TRefQuaternionUniformSpline<T> s(k1,k2,k3,k4);
+                    T target[4]={T(q[0]),T(q[1]),T(q[2]),T(q[3])};
+                    T pred[4],diff[4];
+                    s.cum_evaluate(T(u),pred);
+                    D.sub(target,pred,diff);
+                    ceres::QuaternionToAngleAxis(diff,residuals);
+
+                    for (int i=0;i<3;i++) {
+                        residuals[i] /= T(weight);
                     }
                     return true;
                 }
