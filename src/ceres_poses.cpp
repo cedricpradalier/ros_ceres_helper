@@ -94,7 +94,7 @@ namespace cerise{
 
     void Pose::randomize(double sigma_trans, double sigma_rot) {
         std::normal_distribution<double> dt{0.0, sigma_trans};
-        std::normal_distribution<double> dr{0.0, sigma_trans};
+        std::normal_distribution<double> dr{0.0, sigma_rot};
         T[0] = dt(gen);
         T[1] = dt(gen);
         T[2] = dt(gen);

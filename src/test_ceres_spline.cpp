@@ -1,6 +1,8 @@
 
 #include "ros_ceres_helper/BasicOptimisationProblem.h"
 #include "ros_ceres_helper/ceres_spline.h"
+#include "ros_ceres_helper/ceres_rotations.h"
+#include "ros_ceres_helper/ceres_poses.h"
 
 const unsigned int Nk=5;
 const unsigned int Nk2=7;
@@ -152,22 +154,157 @@ class SplineTestOptQ : public cerise::BasicOptimisationProblem {
         }
 
         void print() const {
+            double aa[3];
             FILE * fp;
             fp = fopen("inputq","w");
             for (size_t i=0;i<Np;i++) {
-                fprintf(fp,"%f %f %f %f %f\n",t[i],points[4*i+0],points[4*i+1],points[4*i+2],points[4*i+3]);
+                ceres::QuaternionToAngleAxis(points+4*i,aa);
+                fprintf(fp,"%f %f %f %f %f %f %f %f\n",t[i],points[4*i+0],points[4*i+1],points[4*i+2],points[4*i+3],aa[0],aa[1],aa[2]);
             }
             fclose(fp);
             fp = fopen("knotsq","w");
             for (size_t i=0;i<spline.warper.n_knots;i++) {
-                fprintf(fp,"%f %f %f %f %f\n",spline.warper.knot(i),knots[4*i+0],knots[4*i+1],knots[4*i+2],knots[4*i+3]);
+                ceres::QuaternionToAngleAxis(knots+4*i,aa);
+                fprintf(fp,"%f %f %f %f %f %f %f %f\n",spline.warper.knot(i),knots[4*i+0],knots[4*i+1],knots[4*i+2],knots[4*i+3],aa[0],aa[1],aa[2]);
             }
             fclose(fp);
             fp = fopen("splineq","w");
             for (double t=spline.warper.min();t<spline.warper.max();t+=0.01) {
                 double ft[4]={0,0,0,0};
                 spline.evaluate(t,ft);
-                fprintf(fp,"%f %f %f %f %f\n",t,ft[0],ft[1],ft[2],ft[3]);
+                ceres::QuaternionToAngleAxis(ft,aa);
+                fprintf(fp,"%f %f %f %f %f %f %f %f\n",t,ft[0],ft[1],ft[2],ft[3],aa[0],aa[1],aa[2]);
+            }
+            fclose(fp);
+        }
+
+};
+
+class SplineTestOptR : public cerise::BasicOptimisationProblem {
+    protected:
+        cerise::UniformSpline<cerise::TRefRotationUniformSpline<double>> spline;
+        std::vector<cerise::Rotation> points;
+
+    public:
+        SplineTestOptR() : BasicOptimisationProblem(),  spline(0.,10.,Nkq), points(Np) {
+            for (size_t i=0;i<spline.warper.n_knots;i++) {
+                spline.knots[i].setFromAngleAxis(0,0,0);
+            }
+            for (unsigned int i=0;i<Np;i++) {
+                double aa[3] = {x[i],y[i],z[i]};
+                points[i].setFromAngleAxis(aa);
+                std::pair<size_t,double> iu = spline.warper(t[i]);
+                ceres::LossFunction* loss_function = NULL;
+                ceres::CostFunction *cost_function;
+                cost_function = new ceres::AutoDiffCostFunction<cerise::SplineErrorR,3,4,4,4,4>(
+                            new cerise::SplineErrorR(iu.second,points[i]));
+                problem->AddResidualBlock(cost_function,loss_function,
+                        spline.knots[iu.first-1].Q, spline.knots[iu.first].Q, 
+                        spline.knots[iu.first+1].Q, spline.knots[iu.first+2].Q);
+            }
+            for (size_t i=0;i<spline.warper.n_knots;i++) {
+                ceres::LocalParameterization* quaternion_parameterization = NULL;
+                quaternion_parameterization = new ceres::QuaternionParameterization;
+                problem->SetParameterization(spline.knots[i].Q, quaternion_parameterization);
+            }
+        }
+
+        ~SplineTestOptR() {
+        }
+
+        void print() const {
+            double aa[3];
+            FILE * fp;
+            fp = fopen("inputr","w");
+            for (size_t i=0;i<Np;i++) {
+                points[i].getAngleAxis(aa);
+                fprintf(fp,"%f %f %f %f %f %f %f %f\n",t[i],points[i].Q[0],points[i].Q[1],points[i].Q[2],points[i].Q[3],aa[0],aa[1],aa[2]);
+            }
+            fclose(fp);
+            fp = fopen("knotsr","w");
+            for (size_t i=0;i<spline.warper.n_knots;i++) {
+                spline.knots[i].getAngleAxis(aa);
+                fprintf(fp,"%f %f %f %f %f %f %f %f\n",spline.warper.knot(i),spline.knots[i].Q[0],spline.knots[i].Q[1],spline.knots[i].Q[2],spline.knots[i].Q[3],aa[0],aa[1],aa[2]);
+            }
+            fclose(fp);
+            fp = fopen("spliner","w");
+            for (double t=spline.warper.min();t<spline.warper.max();t+=0.01) {
+                cerise::Rotation ft;
+                spline.evaluate(t,ft);
+                ft.getAngleAxis(aa);
+                fprintf(fp,"%f %f %f %f %f %f %f %f\n",t,ft.Q[0],ft.Q[1],ft.Q[2],ft.Q[3],aa[0],aa[1],aa[2]);
+            }
+            fclose(fp);
+        }
+
+};
+
+class SplineTestOptP : public cerise::BasicOptimisationProblem {
+    protected:
+        cerise::UniformSpline<cerise::TRefPoseUniformSpline<double>> spline;
+        std::vector<cerise::Pose> points;
+
+    public:
+        SplineTestOptP() : BasicOptimisationProblem(),  spline(0.,10.,Nkq), points(Np) {
+            for (size_t i=0;i<spline.warper.n_knots;i++) {
+                spline.knots[i].setFromAngleAxis(0,0,0,0,0,0);
+            }
+            for (unsigned int i=0;i<Np;i++) {
+                double aa[3] = {x[i],y[i],z[i]};
+                points[i].setFromAngleAxis(aa,aa);
+                std::pair<size_t,double> iu = spline.warper(t[i]);
+                ceres::LossFunction* loss_function = NULL;
+                ceres::CostFunction *cost_function;
+                cost_function = new ceres::AutoDiffCostFunction<cerise::SplineErrorP,3,3,4,3,4,3,4,3,4>(
+                            new cerise::SplineErrorP(iu.second,points[i]));
+                problem->AddResidualBlock(cost_function,loss_function,
+                        spline.knots[iu.first-1].T, spline.knots[iu.first-1].Q,
+                        spline.knots[iu.first].T, spline.knots[iu.first].Q, 
+                        spline.knots[iu.first+1].T, spline.knots[iu.first+1].Q, 
+                        spline.knots[iu.first+2].T, spline.knots[iu.first+2].Q);
+            }
+            for (size_t i=0;i<spline.warper.n_knots;i++) {
+                ceres::LocalParameterization* quaternion_parameterization = NULL;
+                quaternion_parameterization = new ceres::QuaternionParameterization;
+                problem->SetParameterization(spline.knots[i].Q, quaternion_parameterization);
+            }
+        }
+
+        ~SplineTestOptP() {
+        }
+
+        void print() const {
+            double aa[3];
+            FILE * fp;
+            fp = fopen("inputp","w");
+            for (size_t i=0;i<Np;i++) {
+                points[i].getAngleAxis(aa);
+                fprintf(fp,"%f %f %f %f %f %f %f %f %f %f %f\n",t[i],
+                        points[i].T[0],points[i].T[1],points[i].T[2],
+                        points[i].Q[0],points[i].Q[1],points[i].Q[2],points[i].Q[3],
+                        aa[0],aa[1],aa[2]);
+            }
+            fclose(fp);
+            fp = fopen("knotsp","w");
+            for (size_t i=0;i<spline.warper.n_knots;i++) {
+                spline.knots[i].getAngleAxis(aa);
+                fprintf(fp,"%f %f %f %f %f %f %f %f %f %f %f\n",
+                        spline.warper.knot(i),
+                        spline.knots[i].T[0],spline.knots[i].T[1],spline.knots[i].T[2],
+                        spline.knots[i].Q[0],spline.knots[i].Q[1],
+                        spline.knots[i].Q[2],spline.knots[i].Q[3],
+                        aa[0],aa[1],aa[2]);
+            }
+            fclose(fp);
+            fp = fopen("splinep","w");
+            for (double t=spline.warper.min();t<spline.warper.max();t+=0.01) {
+                cerise::Pose ft;
+                spline.evaluate(t,ft);
+                ft.getAngleAxis(aa);
+                fprintf(fp,"%f %f %f %f %f %f %f %f %f %f %f\n",t,
+                        ft.T[0],ft.T[1],ft.T[2],
+                        ft.Q[0],ft.Q[1],ft.Q[2],ft.Q[3],
+                        aa[0],aa[1],aa[2]);
             }
             fclose(fp);
         }
@@ -213,6 +350,15 @@ int main(int argc, char * argv[]) {
     SplineTestOptQ tq;
     tq.optimise();
     tq.print();
+#endif
+#if 1
+    cerise::Rotation qknots[4] = {cerise::Rotation(knots+0), cerise::Rotation(knots+1), 
+        cerise::Rotation(knots+2), cerise::Rotation(knots+3)}; 
+    // Useless, just for testing and forcing the compiler to compile everything.
+    cerise::TRefRotationUniformSpline<double> qR(qknots[0],qknots[1],qknots[2],qknots[3]);
+    SplineTestOptR tr;
+    tr.optimise();
+    tr.print();
 #endif
     return 0;
 }

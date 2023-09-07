@@ -127,6 +127,7 @@ include_directories(
 ## Declare a C++ library
 add_library(${PROJECT_NAME}
   src/ceres_poses.cpp
+  src/ceres_rotations.cpp
   src/ceres_flags.cpp
   src/BasicOptimisationProblem.cpp
 )
