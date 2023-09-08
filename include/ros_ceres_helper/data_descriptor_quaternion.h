@@ -55,12 +55,12 @@ namespace cerise{
             }
             
             virtual void add(ConstRefType v1, ConstRefType v2, WritableType v3) const {
-                ceres::QuaternionProduct(v1,v2,v3);
+                ceres::QuaternionProduct(v2,v1,v3);
             }
 
             virtual void sub(ConstRefType v1, ConstRefType v2, WritableType v3) const {
                 DT v2inv[4] = {v2[0],-v2[1],-v2[2],-v2[3]};
-                ceres::QuaternionProduct(v1,v2inv,v3);
+                ceres::QuaternionProduct(v2inv,v1,v3);
             }
         };
 

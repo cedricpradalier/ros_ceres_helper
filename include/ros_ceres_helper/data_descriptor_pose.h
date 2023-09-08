@@ -53,11 +53,11 @@ namespace cerise{
             }
             
             virtual void add(ConstRefType v1, ConstRefType v2, WritableType v3) const {
-                v3 = v1 * v2;
+                v3 = v2 * v1;
             }
 
             virtual void sub(ConstRefType v1, ConstRefType v2, WritableType v3) const {
-                v3 = v1 * v2.inverse();
+                v3 = v2.inverse() * v1;
             }
         };
 
