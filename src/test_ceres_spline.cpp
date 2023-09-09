@@ -12,12 +12,19 @@
 const unsigned int Nk=5;
 const unsigned int Nk2=7;
 const unsigned int Nkq=10;
-const unsigned int Nkp=20;
+const unsigned int Nkp=10;
 const unsigned int Np=10;
+#if 1
 const double t[Np] = {1, 2, 3, 4, 5, 5.5, 6, 7, 8, 9};
 const double x[Np] = {1.2, 1.5, 2, 3.5, 4, 5.6, 5.8, 6.0, 8.8, 9};
 const double y[Np] = {1.5, 0.5, 2.5, 3.5, 3.5, 1.5, -1.8, -2.0, 1.8, 4};
 const double z[Np] = {3.5, 2.5, 1.5, 2.5, 3.5, 2.5, 1.8, 2.0, 3.8, 4};
+#else
+const double t[Np] = {0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5, 8.5, 9.5};
+const double x[Np] = {0e-1,1e-1,2e-1,3e-1,4e-1,5e-1,6e-1,7e-1,8e-1,9e-1};
+const double y[Np] = {0,0,0,0,0,0,0,0,0,0};
+const double z[Np] = {0,0,0,0,0,0,0,0,0,0};
+#endif
 
 class PublisherWithDataParent {
     protected:
@@ -314,7 +321,7 @@ class SplineTestOptQ : public cerise::BasicOptimisationProblem {
             for (size_t i=0;i<spline.warper.n_knots;i++) {
                 double * q = knots+4*i;
                 geometry_msgs::Pose p;
-                p.position.x=t[i]; p.position.y=1; p.position.z=0;
+                p.position.x=t[i]; p.position.y=-0.5; p.position.z=0;
                 p.orientation.w=q[0]; p.orientation.x=q[1]; 
                 p.orientation.y=q[2]; p.orientation.z=q[3];
                 pa.poses.push_back(p);
@@ -329,7 +336,7 @@ class SplineTestOptQ : public cerise::BasicOptimisationProblem {
                 double q[4]={0,0,0,0};
                 spline.evaluate(t,q);
                 geometry_msgs::Pose p;
-                p.position.x=t; p.position.y=2; p.position.z=0;
+                p.position.x=t; p.position.y=0.55; p.position.z=0;
                 p.orientation.w=q[0]; p.orientation.x=q[1]; 
                 p.orientation.y=q[2]; p.orientation.z=q[3];
                 pa.poses.push_back(p);

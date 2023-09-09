@@ -47,7 +47,7 @@ namespace cerise{
             return t0;
         }
         double max() const {
-            return t0 + n_knots*delta;
+            return t0 + (n_knots-1)*delta;
         }
     };
 
