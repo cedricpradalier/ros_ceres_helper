@@ -1,18 +1,52 @@
 
+#include <ros/ros.h>
+#include <geometry_msgs/PoseArray.h>
+#include <visualization_msgs/MarkerArray.h>
+
 #include "ros_ceres_helper/BasicOptimisationProblem.h"
 #include "ros_ceres_helper/ceres_spline.h"
 #include "ros_ceres_helper/ceres_rotations.h"
 #include "ros_ceres_helper/ceres_poses.h"
+#include "ros_ceres_helper/markers.h"
 
 const unsigned int Nk=5;
 const unsigned int Nk2=7;
 const unsigned int Nkq=10;
+const unsigned int Nkp=20;
 const unsigned int Np=10;
 const double t[Np] = {1, 2, 3, 4, 5, 5.5, 6, 7, 8, 9};
 const double x[Np] = {1.2, 1.5, 2, 3.5, 4, 5.6, 5.8, 6.0, 8.8, 9};
 const double y[Np] = {1.5, 0.5, 2.5, 3.5, 3.5, 1.5, -1.8, -2.0, 1.8, 4};
 const double z[Np] = {3.5, 2.5, 1.5, 2.5, 3.5, 2.5, 1.8, 2.0, 3.8, 4};
 
+class PublisherWithDataParent {
+    protected:
+        ros::Publisher P;
+    public:
+        PublisherWithDataParent(const ros::Publisher & P) : P(P) {}
+        virtual ~PublisherWithDataParent() {}
+        virtual void publish()=0;
+};
+
+template <class T>
+    class PublisherWithData : public PublisherWithDataParent {
+        protected:
+            T data;
+        public:
+            PublisherWithData(const ros::Publisher & P, const T & data):PublisherWithDataParent(P),data(data)  {}
+            virtual ~PublisherWithData() {}
+            virtual void publish() {
+                P.publish(data);
+            }
+    };
+
+typedef std::shared_ptr<PublisherWithDataParent> PublisherWithDataPtr;
+
+template <class T>
+    PublisherWithDataPtr newPub(const ros::Publisher & P, const T & data) {
+        PublisherWithData<T> * pu = new PublisherWithData<T>(P,data);
+        return PublisherWithDataPtr(pu);
+    }
 
 class SplineTestOpt1D : public cerise::BasicOptimisationProblem {
     protected:
@@ -56,6 +90,42 @@ class SplineTestOpt1D : public cerise::BasicOptimisationProblem {
             fclose(fp);
         }
 
+        void collectPublishableData(ros::NodeHandle & nh,
+                std::vector<PublisherWithDataPtr> & pub) const {
+            ros::Publisher P = nh.advertise<visualization_msgs::MarkerArray>("spline1d",1);
+            visualization_msgs::MarkerArray ma;
+            cerise::Marker m;
+            m.createSphereList(0.2);
+            m.setHeader("world");
+            m.setColor(1,1,0);
+            m.setNameId("input1",0);
+            for (size_t i=0;i<Np;i++) {
+                m.pushPoint(x[i],y[i],0);
+            }
+            ma.markers.push_back(m);
+
+            m.createSphereList(0.2);
+            m.setHeader("world");
+            m.setColor(0,0,1);
+            m.setNameId("knots1",0);
+            for (size_t i=0;i<spline.warper.n_knots;i++) {
+                m.pushPoint(spline.warper.knot(i),knots[i],0);
+            }
+            ma.markers.push_back(m);
+            
+            m.createLineStrip(0.05);
+            m.setHeader("world");
+            m.setColor(0,1,0);
+            m.setNameId("spline1",0);
+            for (double t=spline.warper.min();t<spline.warper.max();t+=0.01) {
+                double ft=0;
+                spline.evaluate(t,&ft);
+                m.pushPoint(t,ft,0);
+            }
+            ma.markers.push_back(m);
+           
+            pub.push_back(newPub(P,ma));
+        }
 };
 
 
@@ -112,6 +182,44 @@ class SplineTestOpt2D : public cerise::BasicOptimisationProblem {
             fclose(fp);
         }
 
+
+        void collectPublishableData(ros::NodeHandle & nh,
+                std::vector<PublisherWithDataPtr> & pub) const {
+            ros::Publisher P = nh.advertise<visualization_msgs::MarkerArray>("spline2d",1);
+            visualization_msgs::MarkerArray ma;
+            cerise::Marker m;
+            m.createSphereList(0.2);
+            m.setHeader("world");
+            m.setColor(1,1,0);
+            m.setNameId("input2",0);
+            for (size_t i=0;i<Np;i++) {
+                m.pushPoint(x[i],y[i],z[i]);
+            }
+            ma.markers.push_back(m);
+
+            m.createSphereList(0.2);
+            m.setHeader("world");
+            m.setColor(0,0,1);
+            m.setNameId("knots2",0);
+            for (size_t i=0;i<spline.warper.n_knots;i++) {
+                m.pushPoint(spline.warper.knot(i),knots[2*i+0],knots[2*i+1]);
+            }
+            ma.markers.push_back(m);
+            
+            m.createLineStrip(0.05);
+            m.setHeader("world");
+            m.setColor(0,1,0);
+            m.setNameId("spline2",0);
+            for (double t=spline.warper.min();t<spline.warper.max();t+=0.01) {
+                double ft[2]={0,0};
+                spline.evaluate(t,ft);
+                m.pushPoint(t,ft[0],ft[1]);
+            }
+            ma.markers.push_back(m);
+
+            pub.push_back(newPub(P,ma));
+           
+        }
 };
 
 
@@ -130,6 +238,7 @@ class SplineTestOptQ : public cerise::BasicOptimisationProblem {
                 spline.knots[i] = knots+4*i;
             }
             points = new double[Np*4];
+            spline.resetUsed();
             for (unsigned int i=0;i<Np;i++) {
                 double aa[3] = {x[i],y[i],z[i]};
                 ceres::AngleAxisToQuaternion(aa,points+4*i);
@@ -140,8 +249,12 @@ class SplineTestOptQ : public cerise::BasicOptimisationProblem {
                             new cerise::SplineErrorQ(iu.second,points+4*i));
                 problem->AddResidualBlock(cost_function,loss_function,
                         &knots[4*(iu.first-1)], &knots[4*iu.first], &knots[4*(iu.first+1)], &knots[4*(iu.first+2)]);
+                spline.recordUsed(iu.first);
             }
             for (size_t i=0;i<spline.warper.n_knots;i++) {
+                if (!spline.used[i]) {
+                    continue;
+                }
                 ceres::LocalParameterization* quaternion_parameterization = NULL;
                 quaternion_parameterization = new ceres::QuaternionParameterization;
                 problem->SetParameterization(knots+4*i, quaternion_parameterization);
@@ -178,6 +291,52 @@ class SplineTestOptQ : public cerise::BasicOptimisationProblem {
             fclose(fp);
         }
 
+        void collectPublishableData(ros::NodeHandle & nh,
+                std::vector<PublisherWithDataPtr> & pub) const {
+            ros::Publisher P = nh.advertise<geometry_msgs::PoseArray>("splineq_input",1);
+            geometry_msgs::PoseArray pa;
+            pa.header.frame_id = "world";
+            pa.header.stamp = ros::Time::now();
+            for (size_t i=0;i<Np;i++) {
+                double * q = points+4*i;
+                geometry_msgs::Pose p;
+                p.position.x=t[i]; p.position.y=0; p.position.z=0;
+                p.orientation.w=q[0]; p.orientation.x=q[1]; 
+                p.orientation.y=q[2]; p.orientation.z=q[3];
+                pa.poses.push_back(p);
+            }
+            pub.push_back(newPub(P,pa));
+
+            P = nh.advertise<geometry_msgs::PoseArray>("splineq_knots",1);
+            pa.poses.clear();
+            pa.header.frame_id = "world";
+            pa.header.stamp = ros::Time::now();
+            for (size_t i=0;i<spline.warper.n_knots;i++) {
+                double * q = knots+4*i;
+                geometry_msgs::Pose p;
+                p.position.x=t[i]; p.position.y=1; p.position.z=0;
+                p.orientation.w=q[0]; p.orientation.x=q[1]; 
+                p.orientation.y=q[2]; p.orientation.z=q[3];
+                pa.poses.push_back(p);
+            }
+            pub.push_back(newPub(P,pa));
+
+            P = nh.advertise<geometry_msgs::PoseArray>("splineq_curve",1);
+            pa.poses.clear();
+            pa.header.frame_id = "world";
+            pa.header.stamp = ros::Time::now();
+            for (double t=spline.warper.min();t<spline.warper.max();t+=0.1) {
+                double q[4]={0,0,0,0};
+                spline.evaluate(t,q);
+                geometry_msgs::Pose p;
+                p.position.x=t; p.position.y=2; p.position.z=0;
+                p.orientation.w=q[0]; p.orientation.x=q[1]; 
+                p.orientation.y=q[2]; p.orientation.z=q[3];
+                pa.poses.push_back(p);
+            }
+            pub.push_back(newPub(P,pa));
+
+        }
 };
 
 class SplineTestOptR : public cerise::BasicOptimisationProblem {
@@ -190,6 +349,7 @@ class SplineTestOptR : public cerise::BasicOptimisationProblem {
             for (size_t i=0;i<spline.warper.n_knots;i++) {
                 spline.knots[i].setFromAngleAxis(0,0,0);
             }
+            std::vector<bool> used(spline.warper.n_knots,false);
             for (unsigned int i=0;i<Np;i++) {
                 double aa[3] = {x[i],y[i],z[i]};
                 points[i].setFromAngleAxis(aa);
@@ -201,8 +361,15 @@ class SplineTestOptR : public cerise::BasicOptimisationProblem {
                 problem->AddResidualBlock(cost_function,loss_function,
                         spline.knots[iu.first-1].Q, spline.knots[iu.first].Q, 
                         spline.knots[iu.first+1].Q, spline.knots[iu.first+2].Q);
+                used[iu.first-1]=true;
+                used[iu.first]=true;
+                used[iu.first+1]=true;
+                used[iu.first+2]=true;
             }
             for (size_t i=0;i<spline.warper.n_knots;i++) {
+                if (!used[i]) {
+                    continue;
+                }
                 ceres::LocalParameterization* quaternion_parameterization = NULL;
                 quaternion_parameterization = new ceres::QuaternionParameterization;
                 problem->SetParameterization(spline.knots[i].Q, quaternion_parameterization);
@@ -237,6 +404,53 @@ class SplineTestOptR : public cerise::BasicOptimisationProblem {
             fclose(fp);
         }
 
+        void collectPublishableData(ros::NodeHandle & nh,
+                std::vector<PublisherWithDataPtr> & pub) const {
+            ros::Publisher P = nh.advertise<geometry_msgs::PoseArray>("spliner_input",1);
+            geometry_msgs::PoseArray pa;
+            pa.header.frame_id = "world";
+            pa.header.stamp = ros::Time::now();
+            for (size_t i=0;i<Np;i++) {
+                const double * q = points[i].Q;
+                geometry_msgs::Pose p;
+                p.position.x=t[i]; p.position.y=0; p.position.z=0;
+                p.orientation.w=q[0]; p.orientation.x=q[1]; 
+                p.orientation.y=q[2]; p.orientation.z=q[3];
+                pa.poses.push_back(p);
+            }
+            pub.push_back(newPub(P,pa));
+
+            P = nh.advertise<geometry_msgs::PoseArray>("spliner_knots",1);
+            pa.poses.clear();
+            pa.header.frame_id = "world";
+            pa.header.stamp = ros::Time::now();
+            for (size_t i=0;i<spline.warper.n_knots;i++) {
+                const double * q = spline.knots[i].Q;
+                geometry_msgs::Pose p;
+                p.position.x=t[i]; p.position.y=1; p.position.z=0;
+                p.orientation.w=q[0]; p.orientation.x=q[1]; 
+                p.orientation.y=q[2]; p.orientation.z=q[3];
+                pa.poses.push_back(p);
+            }
+            pub.push_back(newPub(P,pa));
+
+            P = nh.advertise<geometry_msgs::PoseArray>("spliner_curve",1);
+            pa.poses.clear();
+            pa.header.frame_id = "world";
+            pa.header.stamp = ros::Time::now();
+            for (double t=spline.warper.min();t<spline.warper.max();t+=0.1) {
+                cerise::Rotation Q;
+                spline.evaluate(t,Q);
+                const double * q = Q.Q;
+                geometry_msgs::Pose p;
+                p.position.x=t; p.position.y=2; p.position.z=0;
+                p.orientation.w=q[0]; p.orientation.x=q[1]; 
+                p.orientation.y=q[2]; p.orientation.z=q[3];
+                pa.poses.push_back(p);
+            }
+            pub.push_back(newPub(P,pa));
+
+        }
 };
 
 class SplineTestOptP : public cerise::BasicOptimisationProblem {
@@ -245,25 +459,33 @@ class SplineTestOptP : public cerise::BasicOptimisationProblem {
         std::vector<cerise::Pose> points;
 
     public:
-        SplineTestOptP() : BasicOptimisationProblem(),  spline(0.,10.,Nkq), points(Np) {
+        SplineTestOptP() : BasicOptimisationProblem(),  spline(0.,10.,Nkp), points(Np) {
             for (size_t i=0;i<spline.warper.n_knots;i++) {
                 spline.knots[i].setFromAngleAxis(0,0,0,0,0,0);
             }
+            std::vector<bool> used(spline.warper.n_knots,false);
             for (unsigned int i=0;i<Np;i++) {
                 double aa[3] = {x[i],y[i],z[i]};
                 points[i].setFromAngleAxis(aa,aa);
                 std::pair<size_t,double> iu = spline.warper(t[i]);
                 ceres::LossFunction* loss_function = NULL;
                 ceres::CostFunction *cost_function;
-                cost_function = new ceres::AutoDiffCostFunction<cerise::SplineErrorP,3,3,4,3,4,3,4,3,4>(
+                cost_function = new ceres::AutoDiffCostFunction<cerise::SplineErrorP,6,3,4,3,4,3,4,3,4>(
                             new cerise::SplineErrorP(iu.second,points[i]));
                 problem->AddResidualBlock(cost_function,loss_function,
                         spline.knots[iu.first-1].T, spline.knots[iu.first-1].Q,
                         spline.knots[iu.first].T, spline.knots[iu.first].Q, 
                         spline.knots[iu.first+1].T, spline.knots[iu.first+1].Q, 
                         spline.knots[iu.first+2].T, spline.knots[iu.first+2].Q);
+                used[iu.first-1]=true;
+                used[iu.first]=true;
+                used[iu.first+1]=true;
+                used[iu.first+2]=true;
             }
             for (size_t i=0;i<spline.warper.n_knots;i++) {
+                if (!used[i]) {
+                    continue;
+                }
                 ceres::LocalParameterization* quaternion_parameterization = NULL;
                 quaternion_parameterization = new ceres::QuaternionParameterization;
                 problem->SetParameterization(spline.knots[i].Q, quaternion_parameterization);
@@ -309,6 +531,56 @@ class SplineTestOptP : public cerise::BasicOptimisationProblem {
             fclose(fp);
         }
 
+
+        void collectPublishableData(ros::NodeHandle & nh,
+                std::vector<PublisherWithDataPtr> & pub) const {
+            ros::Publisher P = nh.advertise<geometry_msgs::PoseArray>("splinep_input",1);
+            geometry_msgs::PoseArray pa;
+            pa.header.frame_id = "world";
+            pa.header.stamp = ros::Time::now();
+            for (size_t i=0;i<Np;i++) {
+                const double * t = points[i].T;
+                const double * q = points[i].Q;
+                geometry_msgs::Pose p;
+                p.position.x=t[0]; p.position.y=t[1]; p.position.z=t[2];
+                p.orientation.w=q[0]; p.orientation.x=q[1]; 
+                p.orientation.y=q[2]; p.orientation.z=q[3];
+                pa.poses.push_back(p);
+            }
+            pub.push_back(newPub(P,pa));
+
+            P = nh.advertise<geometry_msgs::PoseArray>("splinep_knots",1);
+            pa.poses.clear();
+            pa.header.frame_id = "world";
+            pa.header.stamp = ros::Time::now();
+            for (size_t i=0;i<spline.warper.n_knots;i++) {
+                const double * t = spline.knots[i].T;
+                const double * q = spline.knots[i].Q;
+                geometry_msgs::Pose p;
+                p.position.x=t[0]; p.position.y=t[1]; p.position.z=t[2];
+                p.orientation.w=q[0]; p.orientation.x=q[1]; 
+                p.orientation.y=q[2]; p.orientation.z=q[3];
+                pa.poses.push_back(p);
+            }
+            pub.push_back(newPub(P,pa));
+
+            P = nh.advertise<geometry_msgs::PoseArray>("splinep_curve",1);
+            pa.poses.clear();
+            pa.header.frame_id = "world";
+            pa.header.stamp = ros::Time::now();
+            for (double t=spline.warper.min();t<spline.warper.max();t+=0.1) {
+                cerise::Pose Q;
+                spline.evaluate(t,Q);
+                const double * q = Q.Q;
+                geometry_msgs::Pose p;
+                p.position.x=Q.T[0]; p.position.y=Q.T[1]; p.position.z=Q.T[2];
+                p.orientation.w=q[0]; p.orientation.x=q[1]; 
+                p.orientation.y=q[2]; p.orientation.z=q[3];
+                pa.poses.push_back(p);
+            }
+            pub.push_back(newPub(P,pa));
+
+        }
 };
 
 
@@ -334,31 +606,55 @@ int main(int argc, char * argv[]) {
     }
     fclose(fp);
 
+    ros::init(argc,argv,"test_ceres_spline");
+    ros::NodeHandle nh("~");
+    std::vector<PublisherWithDataPtr> pubdata;
+
 #if 1
+    printf("\n\n SplineTestOpt1D \n\n");
     SplineTestOpt1D to;
     to.optimise();
     to.print();
+    to.collectPublishableData(nh,pubdata);
 #endif
 #if 1
+    printf("\n\n SplineTestOpt2D \n\n");
     SplineTestOpt2D t2;
     t2.optimise();
     t2.print();
+    t2.collectPublishableData(nh,pubdata);
 #endif
 #if 1
-    // Useless, just for testing and forcing the compiler to compile everything.
-    cerise::TRefQuaternionUniformSpline<double> qS(knots+0,knots+1,knots+2,knots+3);
+    printf("\n\n SplineTestOptQ \n\n");
     SplineTestOptQ tq;
     tq.optimise();
     tq.print();
+    tq.collectPublishableData(nh,pubdata);
 #endif
 #if 1
-    cerise::Rotation qknots[4] = {cerise::Rotation(knots+0), cerise::Rotation(knots+1), 
-        cerise::Rotation(knots+2), cerise::Rotation(knots+3)}; 
-    // Useless, just for testing and forcing the compiler to compile everything.
-    cerise::TRefRotationUniformSpline<double> qR(qknots[0],qknots[1],qknots[2],qknots[3]);
+    printf("\n\n SplineTestOptR \n\n");
     SplineTestOptR tr;
     tr.optimise();
     tr.print();
+    tr.collectPublishableData(nh,pubdata);
 #endif
+
+#if 1
+    printf("\n\n SplineTestOptP \n\n");
+    SplineTestOptP tp;
+    tp.optimise();
+    tp.print();
+    tp.collectPublishableData(nh,pubdata);
+#endif
+
+    printf("Collected %d publishers\n",int(pubdata.size()));
+    ros::Rate rate(5);
+    while (ros::ok()) {
+        for (size_t i=0;i<pubdata.size();i++) {
+            // printf("Publish %d\n",int(i));
+            pubdata[i]->publish();
+        }
+        rate.sleep();
+    }
     return 0;
 }

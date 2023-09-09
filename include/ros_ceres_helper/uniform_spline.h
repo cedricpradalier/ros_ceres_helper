@@ -11,15 +11,31 @@ namespace cerise{
         struct UniformSpline {
             std::vector<typename SplineType::VarType> knots;
             TimeWarper warper;
+            std::vector<bool> used;
 
-            UniformSpline(double tmin, double tmax, size_t n_knots) : knots(n_knots), warper(tmin, (tmax-tmin)/(n_knots-1) , n_knots) {}
-            UniformSpline(double tmin, size_t n_knots, double delta) : knots(n_knots), warper(tmin, delta , n_knots) {}
-            UniformSpline(TimeWarper warper) : knots(warper.n_knots), warper(warper) {}
+            UniformSpline(double tmin, double tmax, size_t n_knots) : knots(n_knots), warper(tmin, (tmax-tmin)/(n_knots-1) , n_knots), used(n_knots,false) {}
+            UniformSpline(double tmin, size_t n_knots, double delta) : knots(n_knots), warper(tmin, delta , n_knots), used(n_knots,false) {}
+            UniformSpline(TimeWarper warper) : knots(warper.n_knots), warper(warper), used(warper.n_knots,false) {}
             
             template <class IT>
                 void import(IT begin) {
                     std::copy(begin,begin+knots.size(),knots.begin());
                 }
+
+            void resetUsed() {
+                for(size_t i=0;i<used.size();i++) {
+                    used[i]=false;
+                }
+            }
+
+            void recordUsed(size_t iknots) {
+                if ((iknots>=1) && (iknots<used.size()-2)) {
+                    used[iknots-1]=true;
+                    used[iknots]=true;
+                    used[iknots+1]=true;
+                    used[iknots+2]=true;
+                }
+            }
 
             bool evaluate(typename SplineType::DataType t, typename SplineType::WritableType fu) const {
                 std::pair<size_t,typename SplineType::DataType> iu = warper(t);
