@@ -476,18 +476,31 @@ class SplineTestOptP : public cerise::BasicOptimisationProblem {
                 points[i].setFromAngleAxis(aa,aa);
                 std::pair<size_t,double> iu = spline.warper(t[i]);
                 ceres::LossFunction* loss_function = NULL;
+#if 0
                 ceres::CostFunction *cost_function;
                 cost_function = new ceres::AutoDiffCostFunction<cerise::SplineErrorP,6,3,4,3,4,3,4,3,4>(
                             new cerise::SplineErrorP(iu.second,points[i]));
+#else
+                // Example of use of dynamic cost function, mostly because the
+                // the 4 knots of the pose objects already represent 8 variables
+                // and the variadic templates can only handle up to 9 parameters.
+                ceres::DynamicAutoDiffCostFunction<cerise::SplineErrorP,4> *cost_function;
+                cost_function = new ceres::DynamicAutoDiffCostFunction<cerise::SplineErrorP,4>(
+                            new cerise::SplineErrorP(iu.second,points[i]));
+                for (int k=0;k<4;k++) {
+                    cost_function->AddParameterBlock(3);
+                    cost_function->AddParameterBlock(4);
+                }
+                cost_function->SetNumResiduals(6);
+#endif
+                std::vector<double*> param_blocks;
+                for (int k=0;k<4;k++) {
+                    param_blocks.push_back(spline.knots[iu.first-1+k].T);
+                    param_blocks.push_back(spline.knots[iu.first-1+k].Q);
+                    used[iu.first-1+k]=true;
+                }
                 problem->AddResidualBlock(cost_function,loss_function,
-                        spline.knots[iu.first-1].T, spline.knots[iu.first-1].Q,
-                        spline.knots[iu.first].T, spline.knots[iu.first].Q, 
-                        spline.knots[iu.first+1].T, spline.knots[iu.first+1].Q, 
-                        spline.knots[iu.first+2].T, spline.knots[iu.first+2].Q);
-                used[iu.first-1]=true;
-                used[iu.first]=true;
-                used[iu.first+1]=true;
-                used[iu.first+2]=true;
+                        param_blocks);
             }
             for (size_t i=0;i<spline.warper.n_knots;i++) {
                 if (!used[i]) {

@@ -39,6 +39,32 @@ namespace cerise{
                     }
                     return true;
                 }
+
+            template <typename T>
+                //        T    Q
+                // P1 = (P[0], P[1])
+                // P2 = (P[2], P[3])
+                // P3 = (P[4], P[5])
+                // P4 = (P[6], P[7])
+                bool operator()(T const* const* P, 
+                        T* residuals) const {
+                    DataDescriptorPose<T> D;
+                    TRefPoseUniformSpline<T> s(TPose<T>(P[1],P[0]),
+                            TPose<T>(P[3],P[2]),
+                            TPose<T>(P[5],P[4]),
+                            TPose<T>(P[7],P[6]));
+                    cerise::TPose<T> pred,diff;
+                    s.cum_evaluate(T(u),pred);
+                    D.sub(y.cast<T>(),pred,diff);
+                    residuals[0]=diff.T[0]/T(weight);
+                    residuals[1]=diff.T[1]/T(weight);
+                    residuals[2]=diff.T[2]/T(weight);
+                    diff.getAngleAxis(residuals+3);
+                    for (int i=0;i<3;i++) {
+                        residuals[i] /= T(weight);
+                    }
+                    return true;
+                }
         };
 
 
