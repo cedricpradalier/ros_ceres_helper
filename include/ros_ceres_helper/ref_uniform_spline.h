@@ -39,15 +39,18 @@ namespace cerise{
             bool evaluate(DataType u, WritableType fu) const {
                 Eigen::Matrix<DataType, 4, 1> Mu = TSplineNamespace<DescriptorType>::spline_B(u);
                 VarType R = this->create();
+                VarType Rt = this->create();
                 this->exp(LogVarType::Zero(),this->writable(R));
                 VarType ex = this->create();
                 for (int i=0;i<4;i++) {
                     this->exp(Mu(i,0)*lK[i], this->writable(ex));
-                    this->add(R,ex,this->writable(R));
+                    this->add(R,ex,this->writable(Rt));
+                    this->set(Rt, this->writable(R));
                 }
                 this->set(R, fu);
                 this->destroy(ex);
                 this->destroy(R);
+                this->destroy(Rt);
                 // std::cout << "Evaluate " << u << " " << V << " " << Mu.transpose() << " " << fu << std::endl;
                 return true;
             }
@@ -55,15 +58,18 @@ namespace cerise{
             bool evaluate(DataType u, WritableType fu, LogWritableType dfudt, LogWritableType d2fudt2) const {
                 Eigen::Matrix<DataType, 4, 1> Mu = TSplineNamespace<DescriptorType>::spline_B(u);
                 VarType R = this->create();
+                VarType Rt = this->create();
                 this->exp(LogVarType::Zero(),this->writable(R));
                 VarType ex = this->create();
                 for (int i=0;i<4;i++) {
                     this->exp(Mu(i,0)*lK[i], this->writable(ex));
-                    this->add(R,ex,this->writable(R));
+                    this->add(ex,R,this->writable(Rt));
+                    this->set(Rt, this->writable(R));
                 }
                 this->set(R, fu);
                 this->destroy(ex);
                 this->destroy(R);
+                this->destroy(Rt);
                 // std::cout << "Evaluate " << u << " " << V << " " << Mu.transpose() << " " << fu << std::endl;
                 return true;
             }
@@ -71,15 +77,18 @@ namespace cerise{
             bool cum_evaluate(DataType u, WritableType fu) const {
                 Eigen::Matrix<DataType, 4, 1> Mu = TSplineNamespace<DescriptorType>::cum_spline_B(u);
                 VarType R = this->create();
+                VarType Rt = this->create();
                 this->set(K0,this->writable(R));
                 VarType ex = this->create();
                 for (int i=1;i<4;i++) {
                     this->exp(Mu(i,0)*dK[i-1], this->writable(ex));
-                    this->add(R,ex,this->writable(R));
+                    this->add(ex,R,this->writable(Rt));
+                    this->set(Rt, this->writable(R));
                 }
                 this->set(R, fu);
                 this->destroy(ex);
                 this->destroy(R);
+                this->destroy(Rt);
                 return true;
             }
         };

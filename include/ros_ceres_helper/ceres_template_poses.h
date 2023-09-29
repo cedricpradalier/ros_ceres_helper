@@ -4,6 +4,8 @@
 #include <ceres/ceres.h>
 #include <ceres/rotation.h>
 
+
+
 namespace cerise{ 
     template <typename T>
         void invertTransform(const T* const Q, const T* const t,

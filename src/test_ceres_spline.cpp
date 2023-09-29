@@ -262,9 +262,15 @@ class SplineTestOptQ : public cerise::BasicOptimisationProblem {
                 if (!spline.used[i]) {
                     continue;
                 }
+#ifdef OLD_CERES
                 ceres::LocalParameterization* quaternion_parameterization = NULL;
                 quaternion_parameterization = new ceres::QuaternionParameterization;
                 problem->SetParameterization(knots+4*i, quaternion_parameterization);
+#else
+                ceres::Manifold* quaternion_parameterization = NULL;
+                quaternion_parameterization = new ceres::QuaternionManifold;
+                problem->SetManifold(knots+4*i, quaternion_parameterization);
+#endif
             }
         }
 
@@ -377,9 +383,15 @@ class SplineTestOptR : public cerise::BasicOptimisationProblem {
                 if (!used[i]) {
                     continue;
                 }
+#ifdef OLD_CERES
                 ceres::LocalParameterization* quaternion_parameterization = NULL;
                 quaternion_parameterization = new ceres::QuaternionParameterization;
                 problem->SetParameterization(spline.knots[i].Q, quaternion_parameterization);
+#else
+                ceres::Manifold* quaternion_parameterization = NULL;
+                quaternion_parameterization = new ceres::QuaternionManifold;
+                problem->SetManifold(spline.knots[i].Q, quaternion_parameterization);
+#endif
             }
         }
 
@@ -506,9 +518,15 @@ class SplineTestOptP : public cerise::BasicOptimisationProblem {
                 if (!used[i]) {
                     continue;
                 }
+#ifdef OLD_CERES
                 ceres::LocalParameterization* quaternion_parameterization = NULL;
                 quaternion_parameterization = new ceres::QuaternionParameterization;
                 problem->SetParameterization(spline.knots[i].Q, quaternion_parameterization);
+#else
+                ceres::Manifold* quaternion_parameterization = NULL;
+                quaternion_parameterization = new ceres::QuaternionManifold;
+                problem->SetManifold(spline.knots[i].Q, quaternion_parameterization);
+#endif
             }
         }
 

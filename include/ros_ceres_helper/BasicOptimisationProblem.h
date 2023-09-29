@@ -25,10 +25,14 @@ namespace cerise{
 
             void SetMinimizerOptions(ceres::Solver::Options* options) ;
 
+            virtual void updateOptions(ceres::Solver::Options* options) {}
+
         public:
             BasicOptimisationProblem() {
                 problem.reset(new ceres::Problem);
             }
+
+            virtual ~BasicOptimisationProblem() {}
 
             void reset() {
                 problem.reset(new ceres::Problem);

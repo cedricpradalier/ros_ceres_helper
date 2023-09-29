@@ -49,6 +49,7 @@ namespace cerise{
             virtual void log(ConstRefType x, LogWritableType y) const {
                 DT aa[3];
                 ceres::QuaternionToAngleAxis(x.Q,aa);
+                // This is not correct... The jacobian should appear here
                 y << x.T[0], x.T[1], x.T[2], aa[0], aa[1], aa[2];
             }
             

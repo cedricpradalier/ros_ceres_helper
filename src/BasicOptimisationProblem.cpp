@@ -13,7 +13,7 @@ void BasicOptimisationProblem::SetLinearSolver(Solver::Options* options) {
     CHECK(StringToSparseLinearAlgebraLibraryType(
                 FLAGS_sparse_linear_algebra_library,
                 &options->sparse_linear_algebra_library_type));
-    options->num_linear_solver_threads = FLAGS_num_threads;
+    // options->num_linear_solver_threads = FLAGS_num_threads;
 }
 
 void BasicOptimisationProblem::SetMinimizerOptions(Solver::Options* options) {
@@ -39,6 +39,7 @@ void BasicOptimisationProblem::optimise() {
     Solver::Options options;
     SetMinimizerOptions(&options);
     SetLinearSolver(&options);
+    this->updateOptions(&options);
     Solver::Summary summary;
 #if 0
     CRSMatrix jacobian;

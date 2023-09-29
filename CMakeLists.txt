@@ -15,9 +15,9 @@ find_package(catkin REQUIRED geometry_msgs tf tf2)
 # find_package(Boost REQUIRED COMPONENTS system)
 
 FIND_PACKAGE(Ceres REQUIRED)
-INCLUDE_DIRECTORIES(${CERES_INCLUDES})
-SET(Ceres_INCLUDE_DIRS ${CERES_INCLUDES})
-SET(Ceres_LIBRARIES ${CERES_LIBRARIES})
+FIND_PACKAGE(Sophus REQUIRED)
+
+add_definitions(-DSOPHUS_USE_BASIC_LOGGING)
 
 
 
@@ -110,7 +110,7 @@ catkin_package(
   INCLUDE_DIRS include
   LIBRARIES ros_ceres_helper
 #  CATKIN_DEPENDS other_catkin_pkg
-    DEPENDS Ceres
+# DEPENDS Sophus Ceres 
 )
 
 ###########
@@ -139,29 +139,17 @@ add_library(${PROJECT_NAME}
 add_dependencies(${PROJECT_NAME} ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 target_link_libraries(${PROJECT_NAME}
-  ${catkin_LIBRARIES}  ${CERES_LIBRARIES} gflags 
+    ${catkin_LIBRARIES}   Ceres::ceres
 )
 
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
 add_executable(test_ceres_spline src/test_ceres_spline.cpp)
+target_link_libraries(test_ceres_spline ${PROJECT_NAME} ${catkin_LIBRARIES}  Ceres::ceres)
 
-## Rename C++ executable without prefix
-## The above recommended prefix causes long target names, the following renames the
-## target back to the shorter version for ease of user use
-## e.g. "rosrun someones_pkg node" instead of "rosrun someones_pkg someones_pkg_node"
-# set_target_properties(${PROJECT_NAME}_node PROPERTIES OUTPUT_NAME node PREFIX "")
-
-## Add cmake target dependencies of the executable
-## same as for the library above
-# add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-
-## Specify libraries to link a library or executable target against
-target_link_libraries(test_ceres_spline 
-    ${PROJECT_NAME}
-  ${catkin_LIBRARIES} ${CERES_LIBRARIES} gflags 
-)
+add_executable(test_ceres_spline_sophus src/test_ceres_spline_sophus.cpp)
+target_link_libraries(test_ceres_spline_sophus ${PROJECT_NAME} ${catkin_LIBRARIES}  Ceres::ceres)
 
 #############
 ## Install ##
