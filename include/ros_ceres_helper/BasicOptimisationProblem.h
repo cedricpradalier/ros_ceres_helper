@@ -25,7 +25,7 @@ namespace cerise{
 
             void SetMinimizerOptions(ceres::Solver::Options* options) ;
 
-            virtual void updateOptions(ceres::Solver::Options* options) {}
+            virtual void updateOptions(ceres::Solver::Options* /*options*/) {}
 
         public:
             BasicOptimisationProblem() {

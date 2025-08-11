@@ -7,6 +7,7 @@ endif()
 
 FIND_PACKAGE(Ceres REQUIRED)
 FIND_PACKAGE(Sophus REQUIRED)
+FIND_PACKAGE(glog REQUIRED)
 
 add_definitions(-DSOPHUS_USE_BASIC_LOGGING)
 
@@ -24,6 +25,7 @@ find_package(visualization_msgs REQUIRED)
 include_directories(
  include
  ${CERES_INCLUDES}
+ ${SOPHUS_INCLUDES}
 )
 
 ## Declare a C++ library
@@ -35,7 +37,7 @@ add_library(${PROJECT_NAME}
   src/BasicOptimisationProblem.cpp
 )
 
-target_link_libraries(${PROJECT_NAME} ${CERES_LIBRARIES} gflags)
+target_link_libraries(${PROJECT_NAME} Ceres::ceres gflags glog)
 
 ament_target_dependencies(
     ${PROJECT_NAME}
@@ -70,6 +72,29 @@ ament_export_include_directories(include)
 ament_export_libraries(${PROJECT_NAME})
 
 
+add_executable(test_ceres_spline src/test_ceres_spline.cpp)
+target_link_libraries(test_ceres_spline ${PROJECT_NAME} Ceres::ceres gflags glog)
+ament_target_dependencies(
+    test_ceres_spline
+    "rclcpp" 
+    "tf2" 
+    "tf2_ros"
+    "geometry_msgs"
+    "visualization_msgs"
+)
+# target_link_libraries(test_ceres_spline ${PROJECT_NAME} ${catkin_LIBRARIES}  Ceres::ceres)
+
+add_executable(test_ceres_spline_sophus src/test_ceres_spline_sophus.cpp)
+target_link_libraries(test_ceres_spline_sophus ${PROJECT_NAME} Ceres::ceres gflags glog)
+ament_target_dependencies(
+    test_ceres_spline_sophus
+    "rclcpp" 
+    "tf2" 
+    "tf2_ros"
+    "geometry_msgs"
+    "visualization_msgs"
+)
+# target_link_libraries(test_ceres_spline_sophus ${PROJECT_NAME} ${catkin_LIBRARIES}  Ceres::ceres)
 
 
 

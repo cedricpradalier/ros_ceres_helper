@@ -23,7 +23,7 @@ namespace cerise{
                 return DT(0);
             }
 
-            virtual void destroy(RefType v) const {}
+            virtual void destroy(RefType /*v*/) const {}
 
             virtual void set(ConstRefType x, WritableType y) const {
                 *y = x;

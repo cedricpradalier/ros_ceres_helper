@@ -25,7 +25,7 @@ namespace cerise{
                 return TRotation<DT>();
             }
 
-            virtual void destroy(RefType v) const {
+            virtual void destroy(RefType /*v*/) const {
             }
 
 

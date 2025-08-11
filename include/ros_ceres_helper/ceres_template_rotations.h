@@ -33,7 +33,7 @@ namespace cerise{
         TRotation() {
             DT T[3];
             T[0]=T[1]=T[2]=DT(0);
-            ceres::AngleAxisToQuaternion<DT>(T,Q);
+            ceres::AngleAxisToQuaternion<ceres::CeresQuaternionOrder,DT>(T,Q);
         }
 
         template <typename DTin>

@@ -1,7 +1,7 @@
 
-#include <ros/ros.h>
-#include <geometry_msgs/PoseArray.h>
-#include <visualization_msgs/MarkerArray.h>
+#include <rclcpp/rclcpp.hpp>
+#include <geometry_msgs/msg/pose_array.hpp>
+#include <visualization_msgs/msg/marker_array.hpp>
 
 #include <sophus/ceres_manifold.hpp>
 #include <sophus/spline.hpp>
@@ -32,10 +32,8 @@ const double z[Np] = {0,0,0,0,0,0,0,0,0,0};
 #endif
 
 class PublisherWithDataParent {
-    protected:
-        ros::Publisher P;
     public:
-        PublisherWithDataParent(const ros::Publisher & P) : P(P) {}
+        PublisherWithDataParent() {}
         virtual ~PublisherWithDataParent() {}
         virtual void publish()=0;
 };
@@ -43,19 +41,20 @@ class PublisherWithDataParent {
 template <class T>
     class PublisherWithData : public PublisherWithDataParent {
         protected:
+            typename rclcpp::Publisher<T>::SharedPtr pub;
             T data;
         public:
-            PublisherWithData(const ros::Publisher & P, const T & data):PublisherWithDataParent(P),data(data)  {}
+            PublisherWithData(const typename rclcpp::Publisher<T>::SharedPtr & P, const T & data):pub(P), data(data)  {}
             virtual ~PublisherWithData() {}
             virtual void publish() {
-                P.publish(data);
+                pub->publish(data);
             }
     };
 
 typedef std::shared_ptr<PublisherWithDataParent> PublisherWithDataPtr;
 
 template <class T>
-    PublisherWithDataPtr newPub(const ros::Publisher & P, const T & data) {
+    PublisherWithDataPtr newPub(const typename rclcpp::Publisher<T>::SharedPtr & P, const T & data) {
         PublisherWithData<T> * pu = new PublisherWithData<T>(P,data);
         return PublisherWithDataPtr(pu);
     }
@@ -151,8 +150,8 @@ class SplineTestOptLieGroup : public cerise::BasicOptimisationProblem {
 
         virtual void fprintf(FILE * fp, DataType dt, const LieGroupd & d) const = 0;
         
-        // virtual void updateMarker(visualization_msgs::Marker & m, const LieGroupd & d) const = 0;
-        virtual geometry_msgs::Pose toPose(DataType dt, double t, const LieGroupd & d) const = 0;
+        // virtual void updateMarker(visualization_msgs::msg::Marker & m, const LieGroupd & d) const = 0;
+        virtual geometry_msgs::msg::Pose toPose(DataType dt, double t, const LieGroupd & d) const = 0;
 
     public:
 
@@ -239,41 +238,40 @@ class SplineTestOptLieGroup : public cerise::BasicOptimisationProblem {
             fclose(fp);
         }
 
-        void collectPublishableData(const std::string & suffix, ros::NodeHandle & nh,
+        void collectPublishableData(const std::string & suffix, rclcpp::Node & nh,
                 std::vector<PublisherWithDataPtr> & pub) const {
-            ros::Publisher P = nh.advertise<geometry_msgs::PoseArray>("spline"+suffix+"_input",1);
-            geometry_msgs::PoseArray pa;
+            rclcpp::Publisher<geometry_msgs::msg::PoseArray>::SharedPtr P;
+            P = nh.create_publisher<geometry_msgs::msg::PoseArray>("spline"+suffix+"_input",1);
+            geometry_msgs::msg::PoseArray pa;
             pa.header.frame_id = "world";
-            pa.header.stamp = ros::Time::now();
+            pa.header.stamp = nh.get_clock()->now();
             for (size_t i=0;i<Np;i++) {
-                geometry_msgs::Pose p = this->toPose(input,t[i],points[i]);
+                geometry_msgs::msg::Pose p = this->toPose(input,t[i],points[i]);
                 pa.poses.push_back(p);
             }
             pub.push_back(newPub(P,pa));
 
-            P = nh.advertise<geometry_msgs::PoseArray>("spline"+suffix+"_knots",1);
+            P = nh.create_publisher<geometry_msgs::msg::PoseArray>("spline"+suffix+"_knots",1);
             pa.poses.clear();
             pa.header.frame_id = "world";
-            pa.header.stamp = ros::Time::now();
             for (size_t i=0;i<spline.parent_Ts_control_point().size();i++) {
                 LieGroupd g = spline.parent_Ts_control_point()[i];
                 double tknot = spline.t0() + i*spline.delta_t();
-                geometry_msgs::Pose p = this->toPose(knots,tknot,g);
+                geometry_msgs::msg::Pose p = this->toPose(knots,tknot,g);
                 pa.poses.push_back(p);
             }
             pub.push_back(newPub(P,pa));
 
-            P = nh.advertise<geometry_msgs::PoseArray>("spline"+suffix+"_curve",1);
+            P = nh.create_publisher<geometry_msgs::msg::PoseArray>("spline"+suffix+"_curve",1);
             pa.poses.clear();
             pa.header.frame_id = "world";
-            pa.header.stamp = ros::Time::now();
             for (double t=spline.t0();t<spline.tmax();t+=0.1) {
                 // Sophus::IndexAndU iu = spline.index_and_u(t);
                 // Sophus::KnotsAndU ku = spline.knots_and_u(t);
                 // printf("%f %d %f | %d %d %d %d %f (%d)\n", t, iu.i, iu.u, 
                 //         ku.idx_prev, ku.idx_0, ku.idx_1, ku.idx_2, ku.u, int(ku.segment_case));
                 LieGroupd g = spline.parent_T_spline(t);
-                geometry_msgs::Pose p = this->toPose(curve,t,g);
+                geometry_msgs::msg::Pose p = this->toPose(curve,t,g);
                 pa.poses.push_back(p);
             }
             pub.push_back(newPub(P,pa));
@@ -291,14 +289,14 @@ class SplineTestOptQ : public SplineTestOptLieGroup<Sophus::SO3> {
             return SO3d::exp(SO3d::Point(x[i],y[i],z[i]));
         }
 
-        virtual void fprintf(FILE * fp, DataType dt, const SO3d & d) const {
+        virtual void fprintf(FILE * fp, DataType /*dt*/, const SO3d & d) const {
             const double * q = d.data();
             auto aa = d.log();
             ::fprintf(fp,"%e %e %e %e %e %e %e",q[3],q[0],q[1],q[2],aa[0],aa[1],aa[2]);
         }
         
-        virtual geometry_msgs::Pose toPose(DataType dt, double t, const SO3d & d) const {
-            geometry_msgs::Pose p;
+        virtual geometry_msgs::msg::Pose toPose(DataType dt, double t, const SO3d & d) const {
+            geometry_msgs::msg::Pose p;
             const double * q = d.data();
             p.position.x=t; 
             switch (dt) {
@@ -329,7 +327,7 @@ class SplineTestOptQ : public SplineTestOptLieGroup<Sophus::SO3> {
             Parent::print("qs");
         }
 
-        void collectPublishableData(ros::NodeHandle & nh,
+        void collectPublishableData(rclcpp::Node & nh,
                 std::vector<PublisherWithDataPtr> & pub) const {
             Parent::collectPublishableData("q",nh,pub);
         }
@@ -425,7 +423,7 @@ class SplineTestOptP : public SplineTestOptLieGroup<Sophus::SE3> {
             SplineTestOptP * that; 
             NormalizeCB(SplineTestOptP * that) : that(that) {}
 
-            ceres::CallbackReturnType operator()(const ceres::IterationSummary& summary) {
+            ceres::CallbackReturnType operator()(const ceres::IterationSummary& /*summary*/) {
                 that->normalize();
                 return ceres::SOLVER_CONTINUE;
             }
@@ -462,7 +460,7 @@ class SplineTestOptP : public SplineTestOptLieGroup<Sophus::SE3> {
             return res;
         }
 
-        virtual void fprintf(FILE * fp, DataType dt, const SE3d & d) const {
+        virtual void fprintf(FILE * fp, DataType /*dt*/, const SE3d & d) const {
             auto t = d.translation();
             const double * q = d.so3().data();
             auto aa = d.so3().log();
@@ -470,8 +468,8 @@ class SplineTestOptP : public SplineTestOptLieGroup<Sophus::SE3> {
                     q[3],q[0],q[1],q[2],aa[0],aa[1],aa[2]);
         }
         
-        virtual geometry_msgs::Pose toPose(DataType dt, double t, const SE3d & d) const {
-            geometry_msgs::Pose p;
+        virtual geometry_msgs::msg::Pose toPose(DataType /*dt*/, double /*t*/, const SE3d & d) const {
+            geometry_msgs::msg::Pose p;
             auto T = d.translation();
             const double * q = d.so3().data();
             p.position.x=T[0]; 
@@ -494,7 +492,7 @@ class SplineTestOptP : public SplineTestOptLieGroup<Sophus::SE3> {
             Parent::print("ps");
         }
 
-        void collectPublishableData(ros::NodeHandle & nh,
+        void collectPublishableData(rclcpp::Node & nh,
                 std::vector<PublisherWithDataPtr> & pub) const {
             Parent::collectPublishableData("p",nh,pub);
         }
@@ -573,41 +571,57 @@ class SplineTestOptP : public SplineTestOptLieGroup<Sophus::SE3> {
 
 #endif
 
+using namespace std::chrono_literals;
+class SplineTestNode : public rclcpp::Node {
+    public:
+        SplineTestNode() : Node("spline_test_node") {}
+
+        void prepare() {
+#if 1
+            printf("\n\n SplineTestOptQ \n\n");
+            SplineTestOptQ tq;
+            tq.initialize();
+            tq.optimise();
+            tq.print();
+            tq.collectPublishableData(*this,pubdata);
+#endif
+
+
+#if 1
+            printf("\n\n SplineTestOptP \n\n");
+            SplineTestOptP tp;
+            tp.initialize();
+            tp.optimise();
+            tp.normalize();
+            tp.print();
+            // tp.compareTest();
+            tp.collectPublishableData(*this,pubdata);
+#endif
+            printf("Collected %d publishers\n",int(pubdata.size()));
+            timer = this->create_wall_timer( 500ms, 
+                    std::bind(&SplineTestNode::timer_callback, this));
+        }
+
+    protected:
+        void timer_callback() {
+            for (size_t i=0;i<pubdata.size();i++) {
+                // printf("Publish %d\n",int(i));
+                pubdata[i]->publish();
+            }
+        }
+        rclcpp::TimerBase::SharedPtr timer;
+        std::vector<PublisherWithDataPtr> pubdata;
+
+};
+
+
 int main(int argc, char * argv[]) {
     
-    ros::init(argc,argv,"test_ceres_spline_sophus");
-    ros::NodeHandle nh("~");
-    std::vector<PublisherWithDataPtr> pubdata;
+    rclcpp::init(argc, argv);
+    std::shared_ptr<SplineTestNode> ptr = std::make_shared<SplineTestNode>();
+    ptr->prepare();
+    rclcpp::spin(ptr);
+    rclcpp::shutdown();
 
-#if 1
-    printf("\n\n SplineTestOptQ \n\n");
-    SplineTestOptQ tq;
-    tq.initialize();
-    tq.optimise();
-    tq.print();
-    tq.collectPublishableData(nh,pubdata);
-#endif
-
-
-#if 1
-    printf("\n\n SplineTestOptP \n\n");
-    SplineTestOptP tp;
-    tp.initialize();
-    tp.optimise();
-    tp.normalize();
-    tp.print();
-    // tp.compareTest();
-    tp.collectPublishableData(nh,pubdata);
-#endif
-
-    printf("Collected %d publishers\n",int(pubdata.size()));
-    ros::Rate rate(5);
-    while (ros::ok()) {
-        for (size_t i=0;i<pubdata.size();i++) {
-            // printf("Publish %d\n",int(i));
-            pubdata[i]->publish();
-        }
-        rate.sleep();
-    }
     return 0;
 }
