@@ -1,26 +1,27 @@
 #ifndef CERES_HELPER_MARKERS_H
 #define CERES_HELPER_MARKERS_H
 
-#include <ros/ros.h>
-#include <visualization_msgs/Marker.h>
+#include "rclcpp/rclcpp.hpp"
+#include <geometry_msgs/msg/quaternion.hpp>
+#include <visualization_msgs/msg/marker.hpp>
 
 namespace cerise {
-    struct Marker: public visualization_msgs::Marker {
-        Marker() : visualization_msgs::Marker() {
+    struct Marker: public visualization_msgs::msg::Marker {
+        Marker() : visualization_msgs::msg::Marker() {
             initialize();
         }
-        Marker(const Marker & m) : visualization_msgs::Marker(m) {}
-        Marker(const visualization_msgs::Marker & m) : visualization_msgs::Marker(m) {}
+        Marker(const Marker & m) : visualization_msgs::msg::Marker(m) {}
+        Marker(const visualization_msgs::msg::Marker & m) : visualization_msgs::msg::Marker(m) {}
 
         void initialize();
 
-        void setHeader(const std::string & frame, const ros::Time & t = ros::Time());
+        void setHeader(const std::string & frame, const rclcpp::Time & t = rclcpp::Time());
         void setNameId(const std::string & ns, size_t id);
         void setType(int type);
         void setLifeTime(double duration);
         void setPosition(double x, double y, double z);
         void setRotation(double x, double y, double z, double w);
-        void setRotation(const geometry_msgs::Quaternion & q);
+        void setRotation(const geometry_msgs::msg::Quaternion & q);
         void setScale(double x, double y, double z);
         void setColor(double r, double g, double b, double a=1.0);
         void pushPoint(double x, double y, double z);

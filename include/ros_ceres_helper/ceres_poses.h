@@ -4,9 +4,8 @@
 #include <random>
 
 #include <ros_ceres_helper/ceres_template_poses.h>
-#include <geometry_msgs/Transform.h>
-#include <geometry_msgs/Pose.h>
-#include <tf/LinearMath/Transform.h>
+#include <geometry_msgs/msg/transform.hpp>
+#include <geometry_msgs/msg/pose.hpp>
 #include <tf2/LinearMath/Transform.h>
 
 namespace cerise{ 
@@ -29,19 +28,15 @@ namespace cerise{
 
             void randomize(double sigma_trans, double sigma_rot);
 
-            void fromPose(const geometry_msgs::Pose & P) ;
+            void fromPose(const geometry_msgs::msg::Pose & P) ;
 
-            void fromTransform(const geometry_msgs::Transform & P) ;
-
-            void fromTF(const tf::Transform & P) ;
+            void fromTransform(const geometry_msgs::msg::Transform & P) ;
 
             void fromTF2(const tf2::Transform & P) ;
 
-            void toPose(geometry_msgs::Pose & P) const ;
+            void toPose(geometry_msgs::msg::Pose & P) const ;
 
-            void toTransform(geometry_msgs::Transform & P) const ;
-
-            void toTF(tf::Transform & P) const ;
+            void toTransform(geometry_msgs::msg::Transform & P) const ;
 
             void toTF2(tf2::Transform & P) const ;
 

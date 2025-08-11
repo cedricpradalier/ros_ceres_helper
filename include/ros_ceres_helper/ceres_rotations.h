@@ -4,7 +4,7 @@
 #include <random>
 
 #include <ros_ceres_helper/ceres_template_rotations.h>
-#include <geometry_msgs/Quaternion.h>
+#include <geometry_msgs/msg/quaternion.hpp>
 
 namespace cerise{ 
 
@@ -26,9 +26,9 @@ namespace cerise{
 
             void randomize(double sigma_rot);
 
-            void fromQuaternion(const geometry_msgs::Quaternion & P) ;
+            void fromQuaternion(const geometry_msgs::msg::Quaternion & P) ;
 
-            void toQuaternion(geometry_msgs::Quaternion & P) const ;
+            void toQuaternion(geometry_msgs::msg::Quaternion & P) const ;
 
             static Rotation random(double sigma_rot);
     };

@@ -8,20 +8,20 @@ namespace cerise{
     std::mt19937 Rotation::gen{Rotation::rd()};
 
     void Rotation::print(const char * prefix, const char * suffix, FILE * fp) const {
-        printf("%s%.3f %.3f %.3f %.3f%s",
+        fprintf(fp,"%s%.3f %.3f %.3f %.3f%s",
                 prefix?prefix:"",
                 Q[0], Q[1], Q[2], Q[3],
                 suffix?suffix:"\n");
     }
 
-    void Rotation::fromQuaternion(const geometry_msgs::Quaternion & P) {
+    void Rotation::fromQuaternion(const geometry_msgs::msg::Quaternion & P) {
         Q[0]=P.w;
         Q[1]=P.x;
         Q[2]=P.y;
         Q[3]=P.z;
     }
 
-    void Rotation::toQuaternion(geometry_msgs::Quaternion & P) const {
+    void Rotation::toQuaternion(geometry_msgs::msg::Quaternion & P) const {
         P.w=Q[0];
         P.x=Q[1];
         P.y=Q[2];

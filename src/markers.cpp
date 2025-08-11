@@ -5,11 +5,11 @@ namespace cerise {
 
     void Marker::initialize() {
         header.frame_id = "";
-        header.stamp = ros::Time();
+        header.stamp = rclcpp::Time();
         ns = "";
         id = 0;
-        type = visualization_msgs::Marker::SPHERE;
-        action = visualization_msgs::Marker::ADD;
+        type = visualization_msgs::msg::Marker::SPHERE;
+        action = visualization_msgs::msg::Marker::ADD;
         pose.position.x = 0;
         pose.position.y = 0;
         pose.position.z = 0;
@@ -24,7 +24,7 @@ namespace cerise {
         color.r = 0.0;
         color.g = 0.0;
         color.b = 0.0;
-        lifetime = ros::Duration();
+        setLifeTime(-1.);
         frame_locked = false;
         points.clear();
         colors.clear();
@@ -40,7 +40,7 @@ namespace cerise {
         id = i;
     }
 
-    void Marker::setHeader(const std::string & frame, const ros::Time & t) {
+    void Marker::setHeader(const std::string & frame, const rclcpp::Time & t) {
         header.frame_id = frame;
         header.stamp = t;
     }
@@ -50,7 +50,7 @@ namespace cerise {
     }
 
     void Marker::setLifeTime(double duration) {
-        lifetime = ros::Duration(duration);
+        lifetime = rclcpp::Duration(std::chrono::duration<double>(duration));
     }
 
     void Marker::setPosition(double x, double y, double z) {
@@ -66,7 +66,7 @@ namespace cerise {
         pose.orientation.w = w;
     }
 
-    void Marker::setRotation(const geometry_msgs::Quaternion & q) {
+    void Marker::setRotation(const geometry_msgs::msg::Quaternion & q) {
         pose.orientation = q;
     }
 
@@ -84,7 +84,7 @@ namespace cerise {
     }
 
     void Marker::pushPoint(double x, double y, double z) {
-        geometry_msgs::Point P;
+        geometry_msgs::msg::Point P;
         P.x = x;
         P.y = y;
         P.z = z;
@@ -92,7 +92,7 @@ namespace cerise {
     }
 
     void Marker::pushColor(double r, double g, double b, double a) {
-        std_msgs::ColorRGBA c;
+        std_msgs::msg::ColorRGBA c;
         c.r = r;
         c.g = g;
         c.b = b;
@@ -102,19 +102,19 @@ namespace cerise {
 
     void Marker::createLineStrip(double w) {
         initialize();
-        type = visualization_msgs::Marker::LINE_STRIP;
+        type = visualization_msgs::msg::Marker::LINE_STRIP;
         setScale(w,0,0);
     }
 
     void Marker::createSphereList(double r) {
         initialize();
-        type = visualization_msgs::Marker::SPHERE_LIST;
+        type = visualization_msgs::msg::Marker::SPHERE_LIST;
         setScale(r,r,r);
     }
 
     void Marker::createSphere(double x, double y, double z, double r) {
         initialize();
-        type = visualization_msgs::Marker::SPHERE;
+        type = visualization_msgs::msg::Marker::SPHERE;
         setPosition(x,y,z);
         setScale(r,r,r);
     }
@@ -122,20 +122,20 @@ namespace cerise {
     void Marker::createEllipse(double x, double y, double z, 
             double rx, double ry, double rz) {
         initialize();
-        type = visualization_msgs::Marker::SPHERE;
+        type = visualization_msgs::msg::Marker::SPHERE;
         setPosition(x,y,z);
         setScale(rx,ry,rz);
     }
 
     void Marker::createCubeList(double r) {
         initialize();
-        type = visualization_msgs::Marker::CUBE_LIST;
+        type = visualization_msgs::msg::Marker::CUBE_LIST;
         setScale(r,r,r);
     }
 
     void Marker::createCube(double x, double y, double z, double r) {
         initialize();
-        type = visualization_msgs::Marker::CUBE;
+        type = visualization_msgs::msg::Marker::CUBE;
         setPosition(x,y,z);
         setScale(r,r,r);
     }
@@ -143,7 +143,7 @@ namespace cerise {
     void Marker::createBox(double x, double y, double z, 
             double rx, double ry, double rz) {
         initialize();
-        type = visualization_msgs::Marker::CUBE;
+        type = visualization_msgs::msg::Marker::CUBE;
         setPosition(x,y,z);
         setScale(rx,ry,rz);
     }
