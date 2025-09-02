@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.8)
 project(ros_ceres_helper)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-  add_compile_options(-std=c++17 -g -ggdb -Wall -Wextra -Wpedantic -O0)
+  add_compile_options(-std=c++17 -g -ggdb -Wall -Wextra -Wpedantic -O3)
 endif()
 
 FIND_PACKAGE(Ceres REQUIRED)
@@ -83,6 +83,8 @@ ament_target_dependencies(
     "visualization_msgs"
 )
 # target_link_libraries(test_ceres_spline ${PROJECT_NAME} ${catkin_LIBRARIES}  Ceres::ceres)
+install(TARGETS test_ceres_spline
+  DESTINATION lib/${PROJECT_NAME})
 
 add_executable(test_ceres_spline_sophus src/test_ceres_spline_sophus.cpp)
 target_link_libraries(test_ceres_spline_sophus ${PROJECT_NAME} Ceres::ceres gflags glog)
@@ -95,6 +97,8 @@ ament_target_dependencies(
     "visualization_msgs"
 )
 # target_link_libraries(test_ceres_spline_sophus ${PROJECT_NAME} ${catkin_LIBRARIES}  Ceres::ceres)
+install(TARGETS test_ceres_spline_sophus
+  DESTINATION lib/${PROJECT_NAME})
 
 
 

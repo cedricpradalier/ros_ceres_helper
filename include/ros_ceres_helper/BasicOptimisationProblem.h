@@ -1,6 +1,7 @@
 #ifndef CERES_BASIC_OPTIMISATION_H
 #define CERES_BASIC_OPTIMISATION_H
 
+#include <iostream>
 #include <stdlib.h>
 #include <stdio.h>
 #include <memory>
@@ -39,7 +40,7 @@ namespace cerise{
             }
 
             void optimise() ;
-            void evaluate() ;
+            void evaluate(std::ostream & s = std::cout) ;
 
     };
 }

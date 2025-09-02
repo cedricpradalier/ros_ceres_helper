@@ -69,7 +69,7 @@ void BasicOptimisationProblem::optimise() {
 }
 
 
-void BasicOptimisationProblem::evaluate() {
+void BasicOptimisationProblem::evaluate(std::ostream & s) {
     CRSMatrix jacobian;
     double cost;
     std::vector<double> residuals;
@@ -81,14 +81,16 @@ void BasicOptimisationProblem::evaluate() {
             ejacobian(row,jacobian.cols[icol])=jacobian.values[icol];
         }
     }
-    std::cout << "Jacobian\n" << ejacobian << std::endl << "Gradient\n";
+    s << "Jacobian" << std::endl 
+        << ejacobian << std::endl 
+        << "Gradient" << std::endl;
     for (size_t i=0;i<gradient.size();i++) {
-        printf("%f ",gradient[i]);
+        s << gradient[i] << " ";
     }
-    printf("\nResiduals\n");
+    s << std::endl << "Residuals" << std::endl;
     for (size_t i=0;i<residuals.size();i++) {
-        printf("%f ",residuals[i]);
+        s << residuals[i] << " ";
     }
-    printf("\n");
+    s << std::endl;
 
 }
