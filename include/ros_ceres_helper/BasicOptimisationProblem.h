@@ -21,6 +21,7 @@ namespace cerise{
         protected:
 
             std::shared_ptr<ceres::Problem> problem;
+            ceres::Solver::Summary summary;
 
             void SetLinearSolver(ceres::Solver::Options* options) ;
 
@@ -39,9 +40,12 @@ namespace cerise{
                 problem.reset(new ceres::Problem);
             }
 
-            void optimise() ;
+            bool optimise() ;
             void evaluate(std::ostream & s = std::cout) ;
 
+            const ceres::Solver::Summary & getSummary() const {
+                return summary;
+            }
     };
 }
 

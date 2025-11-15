@@ -35,12 +35,11 @@ void BasicOptimisationProblem::SetMinimizerOptions(Solver::Options* options) {
 
 }
 
-void BasicOptimisationProblem::optimise() {
+bool BasicOptimisationProblem::optimise() {
     Solver::Options options;
     SetMinimizerOptions(&options);
     SetLinearSolver(&options);
     this->updateOptions(&options);
-    Solver::Summary summary;
 #if 0
     CRSMatrix jacobian;
     double cost;
@@ -65,6 +64,8 @@ void BasicOptimisationProblem::optimise() {
 #endif
     Solve(options, &(*problem), &summary);
     std::cout << summary.FullReport() << "\n";
+
+    return summary.IsSolutionUsable();
 
 }
 
